@@ -1,8 +1,10 @@
-// Offline-stöd: allt spelet behöver sparas i cachen vid installation.
-// Sidan visas alltid direkt från cachen och uppdateras i bakgrunden,
-// så en ny version syns vid nästa start.
-const CACHE = 'spider-v1';
-const FILES = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
+// Offline-stöd: allt appen behöver sparas i cachen vid installation.
+// Online hämtas alltid senaste versionen från nätet (och cachen uppdateras).
+// Cachen används bara offline, eller om nätet inte svarar inom TIMEOUT.
+// Byt CACHE när filer läggs till eller tas bort.
+const CACHE = 'solitaires-v3';
+const TIMEOUT = 3000;
+const FILES = ['./', './index.html', './spider.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
@@ -17,14 +19,18 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
-  const key = req.mode === 'navigate' ? './index.html' : req;
-  e.respondWith(caches.open(CACHE).then(async cache => {
-    const cached = await cache.match(key, { ignoreSearch: true });
-    const fresh = fetch(req).then(res => {
-      if (res.ok) cache.put(key, res.clone());
+  e.respondWith((async () => {
+    const cache = await caches.open(CACHE);
+    const network = fetch(req, { cache: 'no-cache' }).then(res => {
+      if (res.ok && !res.redirected) cache.put(req, res.clone());
       return res;
-    }).catch(() => cached);
-    if (cached) { e.waitUntil(fresh); return cached; }
-    return fresh;
-  }));
+    });
+    try {
+      return await Promise.race([network, new Promise((_, fail) => setTimeout(fail, TIMEOUT))]);
+    } catch (err) {
+      const cached = await cache.match(req, { ignoreSearch: true }) || (req.mode === 'navigate' ? await cache.match('./') : undefined);
+      if (cached) { e.waitUntil(network.catch(() => {})); return cached; }
+      return network;
+    }
+  })());
 });

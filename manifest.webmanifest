@@ -1,6 +1,6 @@
 {
-  "name": "Spider Solitaire",
-  "short_name": "Spider",
+  "name": "Solitaires",
+  "short_name": "Solitaires",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
