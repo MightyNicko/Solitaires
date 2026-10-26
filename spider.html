@@ -250,7 +250,7 @@
     st.cols[d].push(...st.cols[c].splice(i));
     flipTop(c);
     st.score--; st.moves++;
-    after({});
+    after({ vol: MOVE_VOL });
     completeLater([d], 300);
   }
   // En färdig serie tas bort först när draget har landat, så att korten hinner lägga sig i ordning i kolumnen
@@ -282,7 +282,7 @@
     const moves = st.moves;
     Object.assign(st, JSON.parse(hist.pop()));
     st.score--; st.moves = moves + 1;
-    after({});
+    after({ vol: MOVE_VOL });
   }
   function win() {
     st.won = true; save(); updateHud();
@@ -350,6 +350,7 @@
   function clearHint() { hints = null; clearHintMarks(); }
 
   // ---------- Rendering ----------
+  const MOVE_VOL = .4;   // spelarens egna flyttar (och ångra) låter svagare än utdelningen
   function instant(fn) { board.classList.add('noanim'); fn(); void board.offsetWidth; board.classList.remove('noanim'); }
   function buildCards() {
     els.forEach(e => e.remove());
@@ -395,7 +396,7 @@
       const e = els[id];
       // Ett kort som flyttas låter när det landar: efter sin fördröjning och ca 60 % av rörelsen (den bromsar in mot slutet)
       if (!quiet && (Math.abs(parseFloat(e.style.left) - x) > 8 || Math.abs(parseFloat(e.style.top) - y) > 8))
-        CardSounds.place(((delay[id] || 0) + 180) * SPEED, cls.includes('gone') ? .6 : 1);
+        CardSounds.place(((delay[id] || 0) + 180) * SPEED, (cls.includes('gone') ? .6 : 1) * (anim.vol ?? 1));
       e.style.left = x + 'px'; e.style.top = y + 'px'; e.style.zIndex = z;
       e.className = cls; e.style.transform = ''; e.style.transitionDelay = (delay[id] || 0) * SPEED + 'ms';
     };
@@ -473,7 +474,7 @@
         el.style.transform = '';
       });
       void board.offsetWidth;
-      if (!cancel && g.target >= 0) doMove(g.c, g.i, g.target); else render();
+      if (!cancel && g.target >= 0) doMove(g.c, g.i, g.target); else render({ vol: MOVE_VOL });
     } else if (!cancel && settings.tapMove) {
       const d = g.ok ? bestDest(g.c, g.i) : -1;
       if (d >= 0) doMove(g.c, g.i, d); else shake(g.run);
