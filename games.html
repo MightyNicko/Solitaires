@@ -189,16 +189,19 @@
   $('grid').addEventListener('click', e => { const b = e.target.closest('.tile[data-url]'); if (b) go(b.dataset.url); });
   $('back').onclick = () => go('./');
 
-  // Rita om vid vridning (iOS skickar inte alltid resize, se Spider) och när man kommer tillbaka till sidan
+  // Rita om när sidan byter storlek. Jämför sidans egna mått, inte innerWidth/innerHeight: under en vridning på iPad
+  // ändras de före sidans mått, och då räknades rutorna fram med gamla mått. Räkna därför om några gånger under vridningen.
   let size = '';
   function relayout() {
-    const s = innerWidth + 'x' + innerHeight;
+    const s = $('app').clientWidth + 'x' + $('app').clientHeight;
     if (s === size) return;
     size = s; layout();
   }
-  window.addEventListener('resize', relayout);
-  window.addEventListener('orientationchange', () => setTimeout(relayout, 350));
-  window.addEventListener('pageshow', () => { document.body.classList.remove('leaving'); size = ''; relayout(); });
+  const relayoutSoon = () => { relayout(); requestAnimationFrame(relayout); setTimeout(relayout, 350); setTimeout(relayout, 800); };
+  window.addEventListener('resize', relayoutSoon);
+  window.addEventListener('orientationchange', relayoutSoon);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) relayoutSoon(); });
+  window.addEventListener('pageshow', () => { document.body.classList.remove('leaving'); size = ''; relayoutSoon(); });
   if (window.ResizeObserver) new ResizeObserver(relayout).observe($('app'));
   relayout();
 
