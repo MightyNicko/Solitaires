@@ -1,0 +1,54 @@
+/* Kortens utseende: framsidor och baksidor. Delas av spelen och av förhandsvisningen i inställningarna.
+   Storleken styrs av --cw (kortets bredd). Stilen väljs med klasserna face-* och back-* på en förälder:
+   framsida face-standard | face-classic | face-modern, baksida back-rings | back-classic | back-deco.
+   Kortets egna mått, skugga och animationer sätts av respektive sida. */
+.card .f { display:none; position:absolute; inset:0; border-radius:inherit; overflow:hidden; }
+.card.up .f { display:block; }
+.f span { position:absolute; line-height:1; }
+.red { color:#c8102e; } .blk { color:#1a1a2a; }
+
+/* ---------- Framsida: Standard ---------- */
+.face-standard .card.up { background:linear-gradient(180deg,#fffaf0,#f3ead6); border:1px solid #d6c08a; }
+.face-standard .f span { font-family:Georgia,"Times New Roman",serif; }
+.face-standard .f .r { top:6%; left:9%; font-weight:700; font-size:calc(var(--cw) * .27); letter-spacing:-.04em; }
+.face-standard .f .a { top:6%; right:9%; font-size:calc(var(--cw) * .24); }
+.face-standard .f .b { bottom:7%; left:0; right:0; text-align:center; font-size:calc(var(--cw) * .52); }
+
+/* ---------- Framsida: Klassisk (valör i båda hörnen och traditionella valörsymboler) ---------- */
+.face-classic .card.up { background:#fff; border:1px solid #c9c9c9; }
+.face-classic .f { font-family:Georgia,"Times New Roman",serif; }
+.face-classic .f.blk { color:#111; }
+.f .ci { display:flex; flex-direction:column; align-items:center; font-weight:700; font-size:calc(var(--cw) * .19); letter-spacing:-.04em; }
+.f .ci small { font-size:.8em; margin-top:.08em; letter-spacing:0; }
+.f .ci.tl { top:5%; left:7%; }
+.f .ci.br { bottom:5%; right:7%; transform:rotate(180deg); }
+.f .cp { transform:translate(-50%,-50%); font-size:calc(var(--cw) * .17); }
+.f .cp.flip { transform:translate(-50%,-50%) rotate(180deg); }
+.f .ca { inset:0; display:grid; place-items:center; font-size:calc(var(--cw) * .56); }
+.f .cc { inset:16% 24%; border:1.5px solid currentColor; border-radius:4%; display:grid; place-items:center;
+         background:repeating-linear-gradient(45deg, rgba(201,162,74,.2) 0 3px, transparent 3px 6px); }
+.f .cc::before { content:""; position:absolute; inset:3px; border:1px solid rgba(201,162,74,.85); border-radius:2px; }
+.f .cc b { font-size:calc(var(--cw) * .32); font-weight:700; text-shadow:0 1px 0 #fff; }
+.f .cc i { position:absolute; bottom:4%; font-style:normal; font-size:calc(var(--cw) * .13); }
+.f .cc i.t { top:4%; bottom:auto; transform:rotate(180deg); }
+
+/* ---------- Framsida: Modern fyrfärg (spader svart, hjärter röd, ruter blå, klöver grön) ---------- */
+.face-modern .card.up { background:#fbfbfd; border:2px solid #e2e4ea; }
+.f.mod { color:var(--c); font-family:"Segoe UI",-apple-system,system-ui,sans-serif;
+          background:linear-gradient(180deg, color-mix(in srgb, var(--c) 10%, #fff), #fff 55%); }
+.f.mod.s0 { --c:#20222e; } .f.mod.s1 { --c:#e5304a; } .f.mod.s2 { --c:#1d6fe0; } .f.mod.s3 { --c:#139a5c; }
+.f .mr { top:4%; left:9%; font-size:calc(var(--cw) * .36); font-weight:800; letter-spacing:-.04em; }
+.f .ms { top:8%; right:9%; font-size:calc(var(--cw) * .22); }
+.f .mg { right:-13%; bottom:-17%; font-size:calc(var(--cw) * 1.05); opacity:.16; }
+.f .mn { left:11%; bottom:7%; font-size:calc(var(--cw) * .09); font-weight:700; letter-spacing:.18em; text-transform:uppercase; opacity:.75; }
+
+/* ---------- Baksida: Ringar ---------- */
+.back-rings .card:not(.up) { background:radial-gradient(circle at 50% 50%,#3a2c6e 0 24%,transparent 25%),
+                              repeating-radial-gradient(circle at 50% 50%,#24305e 0 5px,#1b2450 5px 10px);
+                              border:2px solid #c9a95a; }
+
+/* ---------- Baksida: Klassisk vinröd (SVG) ---------- */
+.back-classic .card:not(.up) { background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140' preserveAspectRatio='none'%3E %3Cdefs%3E%3Cpattern id='p' width='5' height='5' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'%3E %3Cpath d='M0 0H5M0 0V5' stroke='%23fff' stroke-opacity='.3' stroke-width='.7'/%3E%3C/pattern%3E%3C/defs%3E %3Crect width='100' height='140' fill='%23fff'/%3E %3Crect x='6' y='6' width='88' height='128' rx='4' fill='%238e1426'/%3E %3Crect x='6' y='6' width='88' height='128' rx='4' fill='url(%23p)'/%3E %3Crect x='10' y='10' width='80' height='120' rx='2.5' fill='none' stroke='%23fff' stroke-opacity='.85' stroke-width='1.2'/%3E %3Crect x='13.5' y='13.5' width='73' height='113' rx='1.5' fill='none' stroke='%23fff' stroke-opacity='.4' stroke-width='.7'/%3E %3Cellipse cx='50' cy='70' rx='25.5' ry='20.5' fill='none' stroke='%23fff' stroke-opacity='.55' stroke-width='.7'/%3E %3Cellipse cx='50' cy='70' rx='22' ry='17' fill='%237a0f20' stroke='%23fff' stroke-width='1.4'/%3E %3Cpath d='M50 58C45 64 38 68 38 74c0 4.5 4.6 6.8 8.6 4.4 1-.6 1.8-1.4 2.3-2.4L47 82h6l-1.9-6c.5 1 1.3 1.8 2.3 2.4 4 2.4 8.6.1 8.6-4.4 0-6-7-10-12-16z' fill='%23fff'/%3E %3C/svg%3E") center / 100% 100% no-repeat; border:1px solid #d4d4d4; }
+
+/* ---------- Baksida: Art deco-solfjäder (SVG) ---------- */
+.back-deco .card:not(.up) { background:#0f1838 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140' preserveAspectRatio='none'%3E %3Crect width='100' height='140' fill='%230f1838'/%3E %3Cdefs%3E%3CclipPath id='c'%3E%3Crect x='5' y='5' width='90' height='130' rx='5'/%3E%3C/clipPath%3E%3C/defs%3E %3Cg clip-path='url(%23c)'%3E%3Cpath d='M64.00 5.00L90.00 5.00M63.79 7.43L89.39 11.95M63.16 9.79L87.59 18.68M62.12 12.00L84.64 25.00M60.72 14.00L80.64 30.71M59.00 15.72L75.71 35.64M57.00 17.12L70.00 39.64M54.79 18.16L63.68 42.59M52.43 18.79L56.95 44.39M50.00 19.00L50.00 45.00M47.57 18.79L43.05 44.39M45.21 18.16L36.32 42.59M43.00 17.12L30.00 39.64M41.00 15.72L24.29 35.64M39.28 14.00L19.36 30.71M37.88 12.00L15.36 25.00M36.84 9.79L12.41 18.68M36.21 7.43L10.61 11.95M36.00 5.00L10.00 5.00' stroke='%23f5d58a' stroke-opacity='.75' stroke-width='.9'/%3E%3Cpath d='M36 5A14 14 0 0 0 64 5M10 5A40 40 0 0 0 90 5' fill='none' stroke='%23f5d58a' stroke-width='1.1'/%3E%3Cpath d='M64.00 135.00L90.00 135.00M63.79 132.57L89.39 128.05M63.16 130.21L87.59 121.32M62.12 128.00L84.64 115.00M60.72 126.00L80.64 109.29M59.00 124.28L75.71 104.36M57.00 122.88L70.00 100.36M54.79 121.84L63.68 97.41M52.43 121.21L56.95 95.61M50.00 121.00L50.00 95.00M47.57 121.21L43.05 95.61M45.21 121.84L36.32 97.41M43.00 122.88L30.00 100.36M41.00 124.28L24.29 104.36M39.28 126.00L19.36 109.29M37.88 128.00L15.36 115.00M36.84 130.21L12.41 121.32M36.21 132.57L10.61 128.05M36.00 135.00L10.00 135.00' stroke='%23f5d58a' stroke-opacity='.75' stroke-width='.9'/%3E%3Cpath d='M36 135A14 14 0 0 1 64 135M10 135A40 40 0 0 1 90 135' fill='none' stroke='%23f5d58a' stroke-width='1.1'/%3E%3C/g%3E %3Crect x='1.5' y='1.5' width='97' height='137' rx='8' fill='none' stroke='%23c9a24a' stroke-width='2.2'/%3E %3Crect x='5' y='5' width='90' height='130' rx='5' fill='none' stroke='%23f5d58a' stroke-opacity='.6' stroke-width='.8'/%3E %3Cpath d='M10 70H37M63 70H90' stroke='%23f5d58a' stroke-opacity='.7' stroke-width='.8'/%3E %3Cpath d='M50 57L63 70L50 83L37 70Z' fill='%231d2a66' stroke='%23f5d58a' stroke-width='1.2'/%3E %3Cpath d='M50 61.5L58.5 70L50 78.5L41.5 70Z' fill='none' stroke='%23f5d58a' stroke-opacity='.5' stroke-width='.6'/%3E %3Cpath d='M50 65L55 70L50 75L45 70Z' fill='%23f5d58a'/%3E %3C/svg%3E") center / 100% 100% no-repeat; border:none; }

@@ -11,6 +11,9 @@
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Solitaires</title>
+<link rel="stylesheet" href="cards.css">
+<script src="i18n.js"></script>
+<script src="cards.js"></script>
 <style>
   :root { --gold:#f5d58a; --gold2:#c9a24a; --ink:#e9dfc4; --navy:#141a35;
           --u:min(1vw, calc(var(--app-h,100vh) / 75)); }
@@ -137,6 +140,11 @@
   .pbtn.gold { background:linear-gradient(180deg,var(--gold),var(--gold2)); color:#1b1b2e; font-weight:700; margin-top:22px; }
   .pbtn.warn { background:transparent; border:1px solid rgba(255,255,255,.15); font-size:13px; }
   .pbtn.warn.armed { border-color:#e5484d; color:#ff8a8d; }
+  /* Förhandsvisning av korten (utseendet kommer från cards.css) */
+  .pv { display:flex; gap:10px; justify-content:center; margin-top:12px; padding:14px 8px; border-radius:12px;
+        background:radial-gradient(circle at 50% 40%,#2a3566 0%,#141a35 70%); --cw:58px; --ch:81px; }
+  .pv .card { position:relative; inset:auto; width:var(--cw); height:var(--ch); border-radius:calc(var(--cw) * .09); overflow:hidden;
+              box-shadow:0 3px 8px rgba(0,0,0,.45); animation:none; transform:none; flex:none; }
 
   @media (prefers-reduced-motion:reduce) { .rays, .card, .medal, .star { animation:none; } .fade { animation:none; } }
   body.calm .rays, body.calm .card, body.calm .medal, body.calm .star { animation:none; }
@@ -163,46 +171,65 @@
   <div class="medal-wrap"><div class="rays"></div><div class="medal"><span>♠&#xFE0E;</span></div></div>
   <div class="suits fade d1"><span>♠&#xFE0E;</span><span>♥&#xFE0E;</span><span>♦&#xFE0E;</span><span>♣&#xFE0E;</span></div>
   <h1 class="fade d1">Solitaires</h1>
-  <div class="sub fade d2">Patienser för iPad</div>
+  <div class="sub fade d2" data-i18n="subtitle">Solitaire for iPad</div>
   <div class="menu fade d3">
-    <button class="deco gold" id="play">Spider<small id="play-sub">Ny giv</small></button>
-    <button class="deco line" id="open-stats"><span>Statistik</span><small>Resultat &amp; rekord</small></button>
-    <button class="deco line" id="open-settings"><span>Inställningar</span><small>Animationer &amp; data</small></button>
+    <button class="deco gold" id="play">Spider<small id="play-sub"></small></button>
+    <button class="deco line" id="open-stats"><span data-i18n="stats">Statistics</span><small data-i18n="statsSub">Results &amp; records</small></button>
+    <button class="deco line" id="open-settings"><span data-i18n="settings">Settings</span><small data-i18n="settingsSub">Appearance &amp; data</small></button>
   </div>
 </main>
-<div class="version">v0.1.1026.1517</div>
+<div class="version">v0.1.1026.1600</div>
 </div>
 
 <div class="overlay" id="stats"><div class="panel wide">
-  <h2>Statistik</h2>
+  <h2 data-i18n="stats">Statistics</h2>
   <div class="orn">◆ ◆ ◆</div>
   <div id="stats-body"></div>
-  <button class="pbtn gold" id="stats-close">Klar</button>
+  <button class="pbtn gold" id="stats-close" data-i18n="done">Done</button>
 </div></div>
 
 <div class="overlay" id="settings"><div class="panel">
-  <h2>Inställningar</h2>
+  <h2 data-i18n="settings">Settings</h2>
   <div class="orn">◆ ◆ ◆</div>
 
   <div class="group">
-    <div class="label">Animationer <em>i alla spel</em></div>
-    <div class="seg" data-key="anim"><button data-v="normal">Normala</button><button data-v="fast">Snabba</button><button data-v="off">Av</button></div>
+    <div class="label" data-i18n-html="sAnim">Animations <em>in all games</em></div>
+    <div class="seg" data-key="anim"><button data-v="normal" data-i18n="animNormal">Normal</button><button data-v="fast" data-i18n="animFast">Fast</button><button data-v="off" data-i18n="off">Off</button></div>
   </div>
   <div class="group">
-    <div class="label">Bakgrundseffekter <em>stjärnor, strålar, glöd</em></div>
-    <div class="seg" data-key="effects"><button data-v="true">På</button><button data-v="false">Av</button></div>
+    <div class="label" data-i18n-html="sEffects">Background effects <em>stars, rays, glow</em></div>
+    <div class="seg" data-key="effects"><button data-v="true" data-i18n="on">On</button><button data-v="false" data-i18n="off">Off</button></div>
   </div>
   <div class="group">
-    <div class="label">Data</div>
-    <button class="pbtn warn" id="reset-stats" data-done="Statistiken är nollställd">Nollställ statistik för alla spel</button>
-    <button class="pbtn warn" id="reset-games" data-done="Sparade spel är raderade">Radera sparade spel</button>
+    <div class="label" data-i18n-html="sHints">Hints <em>the Hint button in all games</em></div>
+    <div class="seg" data-key="hints"><button data-v="true" data-i18n="on">On</button><button data-v="false" data-i18n="off">Off</button></div>
   </div>
-  <button class="pbtn gold" id="close">Klar</button>
+  <div class="group">
+    <div class="label" data-i18n="sFace">Card front</div>
+    <div class="seg" data-key="face"><button data-v="standard" data-i18n="faceStandard">Standard</button><button data-v="classic" data-i18n="faceClassic">Classic</button><button data-v="modern" data-i18n="faceModern">Modern</button></div>
+  </div>
+  <div class="group">
+    <div class="label" data-i18n="sBack">Card back</div>
+    <div class="seg" data-key="back"><button data-v="rings" data-i18n="backRings">Rings</button><button data-v="classic" data-i18n="backClassic">Burgundy</button><button data-v="deco" data-i18n="backDeco">Art deco</button></div>
+    <div class="pv" id="card-preview"></div>
+  </div>
+  <div class="group">
+    <div class="label" data-i18n="sLang">Language</div>
+    <div class="seg" data-key="lang"><button data-v="en">English</button><button data-v="sv">Svenska</button></div>
+  </div>
+  <div class="group">
+    <div class="label" data-i18n="sData">Data</div>
+    <button class="pbtn warn" id="reset-stats" data-i18n="resetStats">Reset statistics for all games</button>
+    <button class="pbtn warn" id="reset-games" data-i18n="resetGames">Delete saved games</button>
+  </div>
+  <button class="pbtn gold" id="close" data-i18n="done">Done</button>
 </div></div>
 
 <script>
 (() => {
   const $ = id => document.getElementById(id);
+  const t = I18N.t;
+  I18N.apply();
   const store = {
     get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
@@ -211,15 +238,16 @@
   // Övergripande inställningar. Spelens egna val sparas av respektive spel (t.ex. spider.settings).
   const SKEY = 'solitaires.settings';
   const g0 = store.get(SKEY) || {};
-  const settings = { anim: g0.anim || 'normal', effects: g0.effects !== false };
-  const colors = n => n + (n === 1 ? ' färg' : ' färger');
+  const settings = { anim: g0.anim || 'normal', effects: g0.effects !== false, hints: g0.hints !== false,
+                     face: g0.face || 'standard', back: g0.back || 'rings', lang: I18N.lang };
+  const colors = n => t('suits', n);
 
   // Alla spel i appen. Ett nytt spel läggs till här (och får en knapp i menyn).
   // Varje spel sparar sin statistik under statsKey som { nivå: { played, won, best, fast } },
   // där best är bästa poäng och fast är snabbaste vinst i sekunder.
   const GAMES = [
     { id: 'spider', name: 'Spider Solitaire', icon: '♠︎', url: 'spider.html', statsKey: 'spider.stats',
-      levels: [{ key: 1, label: '1 färg' }, { key: 2, label: '2 färger' }, { key: 4, label: '4 färger' }] },
+      levels: [1, 2, 4].map(n => ({ key: n, label: colors(n) })) },
   ];
   const fmtTime = t => t ? Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0') : '–';
   const pct = (won, played) => played ? Math.round(won / played * 100) + ' %' : '–';
@@ -228,14 +256,14 @@
       const data = store.get(g.statsKey) || {};
       const rows = g.levels.map(l => Object.assign({ played: 0, won: 0, best: 0, fast: 0 }, data[l.key], { label: l.label }));
       const tot = rows.reduce((a, r) => ({
-        label: 'Totalt', played: a.played + r.played, won: a.won + r.won, best: Math.max(a.best, r.best),
+        label: t('total'), played: a.played + r.played, won: a.won + r.won, best: Math.max(a.best, r.best),
         fast: r.fast && (!a.fast || r.fast < a.fast) ? r.fast : a.fast,
       }), { played: 0, won: 0, best: 0, fast: 0 });
       const row = (r, cls) => `<tr class="${cls || ''}"><td>${r.label}</td><td>${r.played}</td><td>${r.won}</td>` +
         `<td class="hide-sm">${pct(r.won, r.played)}</td><td><b>${r.best || '–'}</b></td><td>${fmtTime(r.fast)}</td></tr>`;
       return `<section class="game-stats"><h3><i>${g.icon}</i>${g.name}</h3>
-        <div class="summary"><div><b>${tot.played}</b>Spelade</div><div><b>${tot.won}</b>Vunna</div><div><b>${pct(tot.won, tot.played)}</b>Vinster</div></div>
-        <table><thead><tr><th>Nivå</th><th>Spelade</th><th>Vunna</th><th class="hide-sm">Vinster</th><th>Bästa</th><th>Snabbast</th></tr></thead>
+        <div class="summary"><div><b>${tot.played}</b>${t('played')}</div><div><b>${tot.won}</b>${t('won')}</div><div><b>${pct(tot.won, tot.played)}</b>${t('winRate')}</div></div>
+        <table><thead><tr><th>${t('level')}</th><th>${t('played')}</th><th>${t('won')}</th><th class="hide-sm">${t('winRate')}</th><th>${t('best')}</th><th>${t('fastest')}</th></tr></thead>
         <tbody>${rows.map(r => row(r)).join('')}${row(tot, 'total')}</tbody></table></section>`;
     }).join('');
   }
@@ -257,10 +285,19 @@
     const g = store.get('spider.game'), st = g && g.st;
     const sp = store.get('spider.settings') || {};
     $('play-sub').textContent = st && !st.won && st.moves > 0
-      ? `Fortsätt · ${st.done.length / 13} av 8 klara`
+      ? `${t('continue')} · ${t('progress', st.done.length / 13)}`
       : `Solitaire · ${colors(sp.suits || g0.suits || 2)}`;
   }
+  // Förhandsvisning: några framsidor och en baksida i valda stilar
+  const PREVIEW = [{ s: 1, r: 7 }, { s: 0, r: 12 }, { s: 2, r: 1 }];
+  function refreshPreview() {
+    const pv = $('card-preview');
+    pv.className = `pv face-${settings.face} back-${settings.back}`;
+    pv.innerHTML = PREVIEW.map(c => `<div class="card up">${CardFaces.html(c, settings.face)}</div>`).join('') +
+                   '<div class="card"></div><div class="card"></div>';
+  }
   function refreshSettings() {
+    refreshPreview();
     document.querySelectorAll('.seg').forEach(seg => {
       const v = String(settings[seg.dataset.key]);
       seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
@@ -271,29 +308,37 @@
     const b = e.target.closest('button');
     if (!b) return;
     const key = seg.dataset.key, v = b.dataset.v;
-    settings[key] = key === 'effects' ? v === 'true' : v;
+    if (key === 'lang') {
+      // Byt språk: spara, ladda om sidan och öppna inställningarna igen
+      if (v === I18N.lang) return;
+      store.set(SKEY, Object.assign(store.get(SKEY) || {}, { lang: v }));
+      try { sessionStorage.setItem('reopen', 'settings'); } catch (err) {}
+      location.reload();
+      return;
+    }
+    settings[key] = key === 'effects' || key === 'hints' ? v === 'true' : v;
     store.set(SKEY, Object.assign(store.get(SKEY) || {}, settings));
     refreshSettings(); applyEffects();
   }));
 
   // Knappar som raderar något kräver två tryck
-  function twoStep(id, action) {
+  function twoStep(id, action, doneKey) {
     const b = $(id), label = b.textContent;
     let timer = 0;
     b.onclick = () => {
       if (!b.classList.contains('armed')) {
-        b.classList.add('armed'); b.textContent = 'Tryck igen för att bekräfta';
+        b.classList.add('armed'); b.textContent = t('confirmTap');
         timer = setTimeout(() => { b.classList.remove('armed'); b.textContent = label; }, 3000);
         return;
       }
       clearTimeout(timer);
       action();
-      b.classList.remove('armed'); b.textContent = b.dataset.done;
+      b.classList.remove('armed'); b.textContent = t(doneKey);
       setTimeout(() => b.textContent = label, 2500);
     };
   }
-  twoStep('reset-stats', () => store.del('spider.stats'));
-  twoStep('reset-games', () => { store.del('spider.game'); refreshPlay(); });
+  twoStep('reset-stats', () => store.del('spider.stats'), 'resetStatsDone');
+  twoStep('reset-games', () => { store.del('spider.game'); refreshPlay(); }, 'resetGamesDone');
   $('open-settings').onclick = () => { refreshSettings(); $('settings').classList.add('open'); };
   $('close').onclick = () => $('settings').classList.remove('open');
   $('settings').onclick = e => { if (e.target.id === 'settings') $('settings').classList.remove('open'); };
@@ -304,6 +349,7 @@
   window.addEventListener('pageshow', () => { document.body.classList.remove('leaving'); refreshPlay(); });
 
   refreshPlay();
+  try { if (sessionStorage.getItem('reopen') === 'settings') { sessionStorage.removeItem('reopen'); $('open-settings').click(); } } catch (err) {}
 
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
     navigator.serviceWorker.register('sw.js').catch(() => {});

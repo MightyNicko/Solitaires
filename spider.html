@@ -11,6 +11,9 @@
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Spider Solitaire</title>
+<link rel="stylesheet" href="cards.css">
+<script src="i18n.js"></script>
+<script src="cards.js"></script>
 <style>
   :root { --gold:#f5d58a; --gold2:#c9a24a; --ink:#e9dfc4; --glass:rgba(255,255,255,.08); --glassb:rgba(255,255,255,.14); }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -28,6 +31,7 @@
   .hud { position:absolute; top:calc(env(safe-area-inset-top) + 14px); left:50%; transform:translateX(-50%); display:flex; gap:26px; align-items:center; padding:9px 24px; border-radius:40px;
          background:var(--glass); border:1px solid var(--glassb); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
          font-size:13px; letter-spacing:.06em; white-space:nowrap; z-index:2000; }
+  .hud em { font-style:normal; text-transform:uppercase; }
   .hud b { color:var(--gold); font-size:17px; margin-left:6px; font-variant-numeric:tabular-nums; }
 
   /* Docka */
@@ -40,6 +44,7 @@
   .dock button:active { transform:scale(.94); }
   .dock button.deal { width:92px; background:linear-gradient(180deg,var(--gold),var(--gold2)); color:#1b1b2e; font-weight:700; }
   .dock button:disabled { opacity:.35; cursor:default; }
+  .dock button.off { opacity:.35; }   /* avstängd i inställningarna, men går att trycka på */
   .dock button.pulse { animation:pulse 1s 2; }
   @keyframes pulse { 50% { box-shadow:0 0 0 4px var(--gold), 0 0 24px var(--gold); } }
 
@@ -47,16 +52,7 @@
   .slot { position:absolute; width:var(--cw); height:var(--ch); border-radius:calc(var(--cw) * .09); border:1px solid rgba(245,213,138,.35); background:rgba(255,255,255,.03); }
   .card { position:absolute; left:0; top:0; width:var(--cw); height:var(--ch); border-radius:calc(var(--cw) * .09); cursor:pointer;
           transition:left var(--dur,.3s) cubic-bezier(.2,.8,.2,1), top var(--dur,.3s) cubic-bezier(.2,.8,.2,1), transform var(--dur,.3s) cubic-bezier(.2,.8,.2,1), opacity var(--dur,.3s);
-          background:radial-gradient(circle at 50% 50%,#3a2c6e 0 24%,transparent 25%), repeating-radial-gradient(circle at 50% 50%,#24305e 0 5px,#1b2450 5px 10px);
-          border:2px solid #c9a95a; box-shadow:0 3px 9px rgba(0,0,0,.45); }
-  .card .f { display:none; }
-  .card.up { background:linear-gradient(180deg,#fffaf0,#f3ead6); border:1px solid #d6c08a; }
-  .card.up .f { display:block; }
-  .f span { position:absolute; line-height:1; font-family:Georgia,"Times New Roman",serif; }
-  .f .r { top:6%; left:9%; font-weight:700; font-size:calc(var(--cw) * .27); letter-spacing:-.04em; }
-  .f .a { top:6%; right:9%; font-size:calc(var(--cw) * .24); }
-  .f .b { bottom:7%; left:0; right:0; text-align:center; font-size:calc(var(--cw) * .52); }
-  .red { color:#c8102e; } .blk { color:#1a1a2a; }
+          box-shadow:0 3px 9px rgba(0,0,0,.45); }   /* fram- och baksidor: se cards.css */
   .card.stock { opacity:0; pointer-events:none; }
   .card.gone { opacity:0; transform:scale(.25); pointer-events:none; }
   .card.dragging { transition:none; box-shadow:0 12px 26px rgba(0,0,0,.55); }
@@ -119,13 +115,13 @@
 <div class="remove-blur" aria-hidden="true"></div>
 <div id="board">
   <div class="ring" id="ring"><span id="sets">0/8</span></div>
-  <div class="hud"><span>POÄNG<b id="score">500</b></span><span>DRAG<b id="moves">0</b></span><span>TID<b id="time">0:00</b></span></div>
+  <div class="hud"><span><em data-i18n="score">Score</em><b id="score">500</b></span><span><em data-i18n="moves">Moves</em><b id="moves">0</b></span><span><em data-i18n="time">Time</em><b id="time">0:00</b></span></div>
   <div class="dock">
-    <button id="b-menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span>Meny</span></button>
-    <button id="b-undo"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span>Ångra</span></button>
-    <button id="b-deal" class="deal"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="11" height="15" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v13"/></svg><span id="deal-lbl">Ge · 5</span></button>
-    <button id="b-hint"><svg viewBox="0 0 24 24"><path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z"/></svg><span>Tips</span></button>
-    <button id="b-new"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span>Ny</span></button>
+    <button id="b-menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span data-i18n="menu">Menu</span></button>
+    <button id="b-undo"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span data-i18n="undo">Undo</span></button>
+    <button id="b-deal" class="deal"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="11" height="15" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v13"/></svg><span id="deal-lbl">Deal · 5</span></button>
+    <button id="b-hint"><svg viewBox="0 0 24 24"><path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z"/></svg><span data-i18n="hint">Hint</span></button>
+    <button id="b-new"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span data-i18n="new">New</span></button>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -134,33 +130,32 @@
   <div class="medal">♠&#xFE0E;</div>
   <h2>Spider</h2>
   <div class="orn">◆ Solitaire ◆</div>
-  <div class="label">Svårighetsgrad</div>
-  <div class="seg" data-key="suits"><button class="btn" data-v="1">1 färg</button><button class="btn" data-v="2">2 färger</button><button class="btn" data-v="4">4 färger</button></div>
-  <div class="label">Tryck på kort för att flytta</div>
-  <div class="seg" data-key="tapMove"><button class="btn" data-v="true">På</button><button class="btn" data-v="false">Av</button></div>
-  <div class="statgrid"><div><b id="st-played">0</b>Spelade</div><div><b id="st-won">0</b>Vunna</div><div><b id="st-best">–</b>Bästa poäng</div></div>
-  <button class="btn gold" id="l-resume">Fortsätt given</button>
-  <button class="btn gold" id="l-play">Spela</button>
-  <button class="btn link" id="l-home">‹ Till startsidan</button>
+  <div class="label" data-i18n="difficulty">Difficulty</div>
+  <div class="seg" data-key="suits"><button class="btn" data-v="1"></button><button class="btn" data-v="2"></button><button class="btn" data-v="4"></button></div>
+  <div class="label" data-i18n="tapMove">Tap a card to move it</div>
+  <div class="seg" data-key="tapMove"><button class="btn" data-v="true" data-i18n="on">On</button><button class="btn" data-v="false" data-i18n="off">Off</button></div>
+  <div class="statgrid"><div><b id="st-played">0</b><span data-i18n="played">Played</span></div><div><b id="st-won">0</b><span data-i18n="won">Won</span></div><div><b id="st-best">–</b><span data-i18n="bestScore">Best score</span></div></div>
+  <button class="btn gold" id="l-resume"></button>
+  <button class="btn gold" id="l-play"></button>
+  <button class="btn link" id="l-home" data-i18n="home">‹ Home</button>
 </div></div>
 
 <div class="overlay" id="confirm"><div class="panel">
-  <h2>Ny giv?</h2>
-  <p>Den pågående given avslutas.</p>
-  <div class="row"><button class="btn" id="c-no">Avbryt</button><button class="btn gold" id="c-yes">Ny giv</button></div>
+  <h2 data-i18n="confirmTitle">New game?</h2>
+  <p data-i18n="confirmText">The current game will end.</p>
+  <div class="row"><button class="btn" id="c-no" data-i18n="cancel">Cancel</button><button class="btn gold" id="c-yes" data-i18n="newGame">New game</button></div>
 </div></div>
 
 <div class="overlay" id="win"><div class="panel">
-  <h2>Grattis!</h2>
-  <p>Alla åtta färger är klara.<br><span id="win-text"></span></p>
-  <button class="btn gold" id="w-new">Spela igen</button>
+  <h2 data-i18n="winTitle">Congratulations!</h2>
+  <p><span data-i18n="winText">All eight suits are complete.</span><br><span id="win-text"></span></p>
+  <button class="btn gold" id="w-new" data-i18n="playAgain">Play again</button>
 </div></div>
 
 <script>
 (() => {
-  const SUITS = ['♠','♥','♦','♣'].map(s => s + '︎');
-  const RED = [false, true, true, false];
-  const RANKS = ['','A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+  const t = I18N.t;
+  I18N.apply();
   const $ = id => document.getElementById(id);
   const board = $('board');
 
@@ -184,6 +179,11 @@
   const SKEY = 'spider.settings';
   const settings = Object.assign({ suits: global.suits || 2, tapMove: global.tapMove !== false }, store.get(SKEY) || {});
   const SPEED = { normal: 1, fast: .5, off: 0 }[global.anim] ?? 1;
+  const HINTS = global.hints !== false;   // tips kan stängas av i startsidans inställningar
+  // Kortens fram- och baksida väljs i startsidans inställningar
+  const FACE = CardFaces.FACES.includes(global.face) ? global.face : 'standard';
+  const BACK = CardFaces.BACKS.includes(global.back) ? global.back : 'rings';
+  board.classList.add('face-' + FACE, 'back-' + BACK);
   board.style.setProperty('--dur', (.3 * SPEED) + 's');
 
   // ---------- Regler ----------
@@ -215,7 +215,7 @@
     col.splice(i).reverse().forEach((x, k) => { st.done.push(x.id); delay[x.id] = base + k * 45; });
     st.score += 100;
     flipTop(c);
-    toast('Färg klar! +100');
+    toast(t('toastSuit'));
   }
 
   // ---------- Spelflöde ----------
@@ -267,7 +267,7 @@
   }
   function deal() {
     if (busy || !st.stock.length || st.won) return;
-    if (st.cols.some(c => !c.length)) { toast('Alla kolumner måste ha kort innan du ger'); return; }
+    if (st.cols.some(c => !c.length)) { toast(t('toastNeedCards')); return; }
     pushHist();
     const delay = {};
     for (let c = 0; c < 10; c++) { const id = st.stock.pop(); st.cols[c].push({ id, up: true }); delay[id] = c * 45; }
@@ -288,7 +288,7 @@
     s.won++; if (st.score > s.best) s.best = st.score;
     if (!s.fast || st.time < s.fast) s.fast = st.time;   // snabbaste vinst i sekunder
     saveStats(stats);
-    setTimeout(() => { $('win-text').textContent = `${st.score} poäng · ${st.moves} drag · ${fmt(st.time)}`; open('win'); }, 1200);
+    setTimeout(() => { $('win-text').textContent = t('winStats', { score: st.score, moves: st.moves, time: fmt(st.time) }); open('win'); }, 1200);
   }
   function bestDest(c, i) {
     const id = st.cols[c][i].id, card = st.deck[id];
@@ -330,12 +330,13 @@
     return res.sort((a, b) => b.sc - a.sc);
   }
   function hint() {
+    if (!HINTS) { toast(t('toastHintsOff')); return; }
     if (busy || st.won) return;
     if (!hints) { hints = findMoves(); hintIdx = 0; }
     clearHintMarks();
     if (!hints.length) {
-      if (st.stock.length) { const b = $('b-deal'); b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse'); toast('Inga drag – ge nya kort'); }
-      else toast('Inga fler drag');
+      if (st.stock.length) { const b = $('b-deal'); b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse'); toast(t('toastNoMovesDeal')); }
+      else toast(t('toastNoMoves'));
       return;
     }
     const h = hints[hintIdx++ % hints.length];
@@ -353,7 +354,7 @@
     els = st.deck.map((c, id) => {
       const e = document.createElement('div');
       e.className = 'card'; e.dataset.id = id;
-      e.innerHTML = `<div class="f ${RED[c.s] ? 'red' : 'blk'}"><span class="r">${RANKS[c.r]}</span><span class="a">${SUITS[c.s]}</span><span class="b">${SUITS[c.s]}</span></div>`;
+      e.innerHTML = CardFaces.html(c, FACE);
       board.appendChild(e);
       return e;
     });
@@ -408,7 +409,7 @@
     const sets = st.done.length / 13;
     $('sets').textContent = sets + '/8';
     $('ring').style.setProperty('--p', sets / 8 * 100);
-    $('deal-lbl').textContent = 'Ge · ' + st.stock.length / 10;
+    $('deal-lbl').textContent = t('deal', st.stock.length / 10);
     $('b-deal').disabled = !st.stock.length || st.won;
     $('b-undo').disabled = !hist.length || st.won;
   }
@@ -477,7 +478,8 @@
   // ---------- Knappar & dialoger ----------
   function open(id) { paused = true; $(id).classList.add('open'); }
   function close(id) { $(id).classList.remove('open'); paused = !!document.querySelector('.overlay.open'); }
-  const colors = n => n + (n === 1 ? ' färg' : ' färger');
+  const colors = n => t('suits', n);
+  document.querySelectorAll('#lobby [data-key=suits] .btn').forEach(b => b.textContent = colors(+b.dataset.v));
   const inProgress = () => st && !st.won && st.moves > 0;
   function refreshLobby() {
     document.querySelectorAll('#lobby .seg').forEach(seg => {
@@ -488,9 +490,9 @@
     $('st-played').textContent = s.played; $('st-won').textContent = s.won; $('st-best').textContent = s.best || '–';
     const going = inProgress();
     $('l-resume').style.display = going ? '' : 'none';
-    if (going) $('l-resume').innerHTML = `Fortsätt given<small>${colors(st.suits)} · ${st.done.length / 13} av 8 klara</small>`;
+    if (going) $('l-resume').innerHTML = `${t('resume')}<small>${colors(st.suits)} · ${t('progress', st.done.length / 13)}</small>`;
     $('l-play').className = going ? 'btn' : 'btn gold';
-    $('l-play').innerHTML = `${going ? 'Ny giv' : 'Spela'}<small>${colors(settings.suits)}</small>`;
+    $('l-play').innerHTML = `${going ? t('newGame') : t('play')}<small>${colors(settings.suits)}</small>`;
   }
   function showLobby() { refreshLobby(); open('lobby'); }
   document.querySelectorAll('#lobby .seg').forEach(seg => seg.addEventListener('click', e => {
@@ -504,6 +506,7 @@
   $('b-deal').onclick = deal;
   $('b-undo').onclick = undo;
   $('b-hint').onclick = hint;
+  if (!HINTS) $('b-hint').classList.add('off');
   $('b-menu').onclick = showLobby;
   $('b-new').onclick = () => { if (inProgress()) open('confirm'); else newGame(settings.suits); };
   $('l-resume').onclick = () => close('lobby');
