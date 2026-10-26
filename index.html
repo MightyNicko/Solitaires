@@ -20,7 +20,7 @@
   html, body { margin:0; height:var(--app-h,100%); overflow:hidden; overscroll-behavior:none; background:#0b0f22; }
   /* Hela appen täcker skärmen, även bakom statusfältet (se fit.js) */
   #app { position:fixed; top:0; left:0; right:0; height:var(--app-h,100%); overflow:hidden;
-         background:radial-gradient(circle at 50% 38%,#2a3566 0%,#141a35 50%,#0b0f22 100%); }
+         background:linear-gradient(180deg,#10152e 0,rgba(16,21,46,0) 90px), radial-gradient(circle at 50% 38%,#2a3566 0%,#141a35 50%,#0b0f22 100%); }
   body { color:var(--ink);
          font-family:-apple-system,"Segoe UI",system-ui,sans-serif; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
          transition:opacity .25s; }
@@ -130,9 +130,15 @@
 
   @media (prefers-reduced-motion:reduce) { .rays, .card, .medal, .star { animation:none; } .fade { animation:none; } }
   body.calm .rays, body.calm .card, body.calm .medal, body.calm .star { animation:none; }
+  /* iPadOS 26 gör annars ytan bakom statusfältet suddig. Den letar efter ett fast element överst
+     (minst 90 % brett, över 10 px högt) och färgar statusfältet i dess bakgrundsfärg i stället.
+     background-clip:text gör att remsan själv inte ritar något. Färgen = bakgrundens överkant. */
+  .sb-band { position:fixed; top:0; left:0; right:0; height:12px; z-index:2147483647; pointer-events:none;
+             background-color:#10152e; -webkit-background-clip:text; background-clip:text; color:transparent; }
 </style>
 </head>
 <body>
+<div class="sb-band"></div>
 <div id="app">
 <div class="stars"></div>
 <div class="frame"><div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div></div>
@@ -149,7 +155,7 @@
     <button class="deco line" id="open-settings"><span>Inställningar</span><small>Animationer &amp; data</small></button>
   </div>
 </main>
-<div class="version">v0.1.1026.1335</div>
+<div class="version">v0.1.1026.1403</div>
 </div>
 
 <div class="overlay" id="settings"><div class="panel">
