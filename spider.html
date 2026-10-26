@@ -18,14 +18,14 @@
   body { color:var(--ink); font-family:-apple-system,"Segoe UI",system-ui,sans-serif; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
   /* Spelplanen täcker hela skärmen. Överkanten har samma färg som statusfältet (theme-color #10152e). */
   #board { position:fixed; top:0; left:0; right:0; height:var(--app-h,100%); touch-action:none;
-           background:linear-gradient(180deg,#10152e 0,rgba(16,21,46,0) 90px), radial-gradient(circle at 50% 40%,#2a3566 0%,#141a35 55%,#0b0f22 100%); }
+           background:linear-gradient(180deg,#10152e 0,#10152e calc(var(--edge) + 16px),rgba(16,21,46,0) calc(var(--edge) + 100px)), radial-gradient(circle at 50% 40%,#2a3566 0%,#141a35 55%,#0b0f22 100%); }
   #board.noanim .card { transition:none !important; }
 
   /* HUD */
-  .ring { position:absolute; top:calc(env(safe-area-inset-top) + 10px); left:calc(env(safe-area-inset-left) + 14px); width:58px; height:58px; border-radius:50%; z-index:2000;
+  .ring { position:absolute; top:calc(env(safe-area-inset-top) + var(--edge) + 10px); left:calc(env(safe-area-inset-left) + 14px); width:58px; height:58px; border-radius:50%; z-index:2000;
           background:conic-gradient(var(--gold) calc(var(--p,0) * 1%), rgba(255,255,255,.12) 0); display:grid; place-items:center; transition:--p .4s; }
   .ring span { width:46px; height:46px; border-radius:50%; background:#141a35; display:grid; place-items:center; font-weight:700; font-size:15px; color:var(--gold); }
-  .hud { position:absolute; top:calc(env(safe-area-inset-top) + 14px); left:50%; transform:translateX(-50%); display:flex; gap:26px; align-items:center; padding:9px 24px; border-radius:40px;
+  .hud { position:absolute; top:calc(env(safe-area-inset-top) + var(--edge) + 14px); left:50%; transform:translateX(-50%); display:flex; gap:26px; align-items:center; padding:9px 24px; border-radius:40px;
          background:var(--glass); border:1px solid var(--glassb); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
          font-size:13px; letter-spacing:.06em; white-space:nowrap; z-index:2000; }
   .hud b { color:var(--gold); font-size:17px; margin-left:6px; font-variant-numeric:tabular-nums; }
@@ -100,13 +100,23 @@
   .lobby .statgrid { margin-bottom:16px; }
 
   @media (max-width:640px) {
-    .ring { width:46px; height:46px; top:calc(env(safe-area-inset-top) + 8px); left:8px; } .ring span { width:36px; height:36px; font-size:12px; }
-    .hud { gap:12px; padding:7px 14px; font-size:10px; top:calc(env(safe-area-inset-top) + 12px); } .hud b { font-size:14px; margin-left:4px; }
+    .ring { width:46px; height:46px; top:calc(env(safe-area-inset-top) + var(--edge) + 8px); left:8px; } .ring span { width:36px; height:36px; font-size:12px; }
+    .hud { gap:12px; padding:7px 14px; font-size:10px; top:calc(env(safe-area-inset-top) + var(--edge) + 12px); } .hud b { font-size:14px; margin-left:4px; }
     .dock { gap:6px; padding:7px 9px; bottom:calc(env(safe-area-inset-bottom) + 10px); } .dock button { width:52px; height:50px; font-size:9px; } .dock button.deal { width:70px; }
   }
+
+  /* iPadOS 26 suddar till de översta ~40 punkterna i hemskärmsappar. Den hoppar över det när ett fast,
+     helbrett och enfärgat element (över 10 px högt) ligger i överkanten. Därför finns .edge-bar, med
+     samma färg som bakgrundens överkant. Som hemskärmsapp flyttas allt viktigt ned med --edge,
+     så att ingenting hamnar i den zonen. */
+  :root { --edge:0px; }
+  @media (display-mode: standalone) { :root { --edge:34px; } }
+  .edge-bar { position:fixed; top:0; left:0; right:0; height:max(env(safe-area-inset-top), 12px);
+              background:#10152e; z-index:2147483647; pointer-events:none; }
 </style>
 </head>
 <body>
+<div class="edge-bar"></div>
 <div id="board">
   <div class="ring" id="ring"><span id="sets">0/8</span></div>
   <div class="hud"><span>POÄNG<b id="score">500</b></span><span>DRAG<b id="moves">0</b></span><span>TID<b id="time">0:00</b></span></div>
