@@ -104,9 +104,19 @@
     .hud { gap:12px; padding:7px 14px; font-size:10px; top:calc(env(safe-area-inset-top) + 12px); } .hud b { font-size:14px; margin-left:4px; }
     .dock { gap:6px; padding:7px 9px; bottom:calc(env(safe-area-inset-bottom) + 10px); } .dock button { width:52px; height:50px; font-size:9px; } .dock button.deal { width:70px; }
   }
+
+  /* iOS/iPadOS 27 suddar till överkanten i hemskärmsappar. Ett fast element överst (minst 90 % brett,
+     över 10 px högt) får WebKit att färga kanten i elementets bakgrundsfärg i stället. background-clip:text
+     gör att remsan själv inte ritar något. Färgen är densamma som theme-color och bakgrundens överkant. */
+  .remove-blur { display:none; }
+  @media (display-mode: standalone) {
+    .remove-blur { display:block; position:fixed; inset:0 0 auto; height:11px; z-index:2147483647; pointer-events:none;
+                   background:#10152e; -webkit-background-clip:text; background-clip:text; }
+  }
 </style>
 </head>
 <body>
+<div class="remove-blur" aria-hidden="true"></div>
 <div id="board">
   <div class="ring" id="ring"><span id="sets">0/8</span></div>
   <div class="hud"><span>POÄNG<b id="score">500</b></span><span>DRAG<b id="moves">0</b></span><span>TID<b id="time">0:00</b></span></div>

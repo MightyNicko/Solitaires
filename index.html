@@ -128,9 +128,19 @@
 
   @media (prefers-reduced-motion:reduce) { .rays, .card, .medal, .star { animation:none; } .fade { animation:none; } }
   body.calm .rays, body.calm .card, body.calm .medal, body.calm .star { animation:none; }
+
+  /* iOS/iPadOS 27 suddar till överkanten i hemskärmsappar. Ett fast element överst (minst 90 % brett,
+     över 10 px högt) får WebKit att färga kanten i elementets bakgrundsfärg i stället. background-clip:text
+     gör att remsan själv inte ritar något. Färgen är densamma som theme-color och bakgrundens överkant. */
+  .remove-blur { display:none; }
+  @media (display-mode: standalone) {
+    .remove-blur { display:block; position:fixed; inset:0 0 auto; height:11px; z-index:2147483647; pointer-events:none;
+                   background:#10152e; -webkit-background-clip:text; background-clip:text; }
+  }
 </style>
 </head>
 <body>
+<div class="remove-blur" aria-hidden="true"></div>
 <div id="app">
 <div class="stars"></div>
 <div class="frame"><div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div></div>
@@ -147,7 +157,7 @@
     <button class="deco line" id="open-settings"><span>Inställningar</span><small>Animationer &amp; data</small></button>
   </div>
 </main>
-<div class="version">v0.1.1026.1447</div>
+<div class="version">v0.1.1026.1456</div>
 </div>
 
 <div class="overlay" id="settings"><div class="panel">
