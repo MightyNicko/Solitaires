@@ -91,6 +91,9 @@
   .label { font-size:12px; letter-spacing:.08em; text-transform:uppercase; opacity:.7; margin:4px 0 8px; }
   .btn small { display:block; font-size:12px; font-weight:400; opacity:.75; margin-top:3px; }
   .btn.link { background:transparent; font-size:14px; opacity:.8; }
+  /* Slutdialogerna (vinst och inga fler drag): bredare, och varje knapp säger vad som händer */
+  .panel.end { width:min(560px,100%); }
+  @media (max-width:480px) { .panel.end .row { flex-direction:column; gap:0; } }
 
   /* Spiders startskärm: inställningar och Spela */
   .lobby .panel { width:min(440px,100%); max-height:calc(var(--app-h,100vh) - 32px); overflow:auto; -webkit-overflow-scrolling:touch;
@@ -155,10 +158,10 @@
   <div class="row"><button class="btn" id="c-no" data-i18n="cancel">Cancel</button><button class="btn gold" id="c-yes" data-i18n="newGame">New game</button></div>
 </div></div>
 
-<div class="overlay" id="win"><div class="panel">
+<div class="overlay" id="win"><div class="panel end">
   <h2 data-i18n="winTitle">Congratulations!</h2>
   <p><span data-i18n="winText">All eight suits are complete.</span><br><span id="win-text"></span></p>
-  <button class="btn gold" id="w-new" data-i18n="playAgain">Play again</button>
+  <div class="row"><button class="btn" id="w-change"></button><button class="btn gold" id="w-new"></button></div>
 </div></div>
 
 <script>
@@ -493,9 +496,16 @@
   window.addEventListener('pointercancel', e => endDrag(e, true));
 
   // ---------- Knappar & dialoger ----------
-  function open(id) { paused = true; $(id).classList.add('open'); }
   function close(id) { $(id).classList.remove('open'); paused = !!document.querySelector('.overlay.open'); }
   const colors = n => t('suits', n);
+  // Slutdialogernas knappar: rubrik plus en rad om vad som händer, och Nytt spel visar inställningarna det startas med
+  const btnText = (title, sub) => `${title}<small>${sub}</small>`;
+  function fillEnd() {
+    const next = btnText(t('newGame'), colors(settings.suits)), change = btnText(t('changeGame'), t('spiderChangeSub'));
+    $('w-change').innerHTML = change;
+    $('w-new').innerHTML = next;
+  }
+  function open(id) { if (id === 'win') fillEnd(); paused = true; $(id).classList.add('open'); }
   document.querySelectorAll('#lobby [data-key=suits] .btn').forEach(b => b.textContent = colors(+b.dataset.v));
   const inProgress = () => st && !st.won && st.moves > 0;
   function refreshLobby() {
@@ -532,6 +542,7 @@
   $('c-no').onclick = () => close('confirm');
   $('c-yes').onclick = () => { close('confirm'); close('lobby'); newGame(settings.suits); };
   $('w-new').onclick = () => { close('win'); newGame(settings.suits); };
+  $('w-change').onclick = () => { close('win'); showLobby(); };
   document.addEventListener('keydown', e => {
     if (paused) return;
     if (e.key === 'z' || e.key === 'Z') undo();

@@ -91,6 +91,9 @@
   .label { font-size:12px; letter-spacing:.08em; text-transform:uppercase; opacity:.7; margin:4px 0 8px; }
   .btn small { display:block; font-size:12px; font-weight:400; opacity:.75; margin-top:3px; }
   .btn.link { background:transparent; font-size:14px; opacity:.8; }
+  /* Slutdialogerna (vinst och inga fler drag): bredare, och varje knapp säger vad som händer */
+  .panel.end { width:min(560px,100%); }
+  @media (max-width:480px) { .panel.end .row { flex-direction:column; gap:0; } }
 
   /* Pyramids startskärm: inställningar och Spela */
   .lobby .panel { width:min(440px,100%); max-height:calc(var(--app-h,100vh) - 32px); overflow:auto; -webkit-overflow-scrolling:touch;
@@ -171,16 +174,16 @@
   <div class="row"><button class="btn" id="c-no" data-i18n="cancel">Cancel</button><button class="btn gold" id="c-yes" data-i18n="newGame">New game</button></div>
 </div></div>
 
-<div class="overlay" id="win"><div class="panel">
+<div class="overlay" id="win"><div class="panel end">
   <h2 data-i18n="winTitle">Congratulations!</h2>
   <p><span data-i18n="pyrWin">The pyramid is cleared!</span><br><span id="win-text"></span></p>
-  <button class="btn gold" id="w-new" data-i18n="playAgain">Play again</button>
+  <div class="row"><button class="btn" id="w-change"></button><button class="btn gold" id="w-new"></button></div>
 </div></div>
 
-<div class="overlay" id="lost"><div class="panel">
+<div class="overlay" id="lost"><div class="panel end">
   <h2 data-i18n="lostTitle">No more moves</h2>
   <p><span data-i18n="lostText">No pairs remain and the stock can no longer help.</span><br><span id="lost-text"></span></p>
-  <div class="row"><button class="btn" id="lo-undo" data-i18n="undo">Undo</button><button class="btn gold" id="lo-new" data-i18n="newGame">New game</button></div>
+  <div class="row"><button class="btn" id="lo-undo"></button><button class="btn" id="lo-change"></button><button class="btn gold" id="lo-new"></button></div>
 </div></div>
 
 <script>
@@ -281,14 +284,14 @@
       open('lost');
     }, 700);
   }
-  // Inga drag kvar: inget par nu, och talongen är slut. Med obegränsade varv räcker det att inget kort i talongen
-  // eller kasthögen någonsin kan paras med ett fritt pyramidkort (annars vänder man runt i all evighet).
+  // Inga drag kvar: inget par nu, och inget kort som går att dra fram ur talongen (eller ur kasthögen, om den får
+  // vändas igen) är en kung eller kan paras med ett fritt pyramidkort. Att dra ändrar inte pyramiden,
+  // så då hjälper det inte att dra resten av talongen.
   function stuck() {
     if (st.won || findMoves().length) return false;
-    if (!st.stock.length && !canTurn()) return true;
-    if (st.passes !== 0) return false;
     const free = st.pyr.filter(id => id !== null && takeable(id));
-    return !st.stock.concat(st.waste).some(c => rank(c) === 13 || free.some(p => rank(p) + rank(c) === 13));
+    const later = st.stock.concat(st.passes === 0 || st.pass < st.passes ? st.waste : []);
+    return !later.some(c => rank(c) === 13 || free.some(p => rank(p) + rank(c) === 13));
   }
   // Tar bort ett par (eller en kung). Pyramidkort ger 10 poäng, kort från kasthögen 5, tom pyramid 250 extra.
   function remove(ids) {
@@ -494,11 +497,19 @@
   window.addEventListener('pointercancel', e => endDrag(e, true));
 
   // ---------- Knappar & dialoger ----------
-  function open(id) { paused = true; $(id).classList.add('open'); }
   function close(id) { $(id).classList.remove('open'); paused = !!document.querySelector('.overlay.open'); }
   document.querySelectorAll('#lobby [data-key=passes] .btn').forEach(b => b.textContent = t('passes', +b.dataset.v));
   const levelName = (variant, passes) => (variant === 'hidden' ? t('hiddenRows') + ' · ' : '') + t('passes', passes);
-  const inProgress = () => st && !st.won && st.moves > 0;
+  // Slutdialogernas knappar: rubrik plus en rad om vad som händer, och Nytt spel visar inställningarna det startas med
+  const btnText = (title, sub) => `${title}<small>${sub}</small>`;
+  function fillEnd() {
+    const next = btnText(t('newGame'), levelName(settings.variant, settings.passes)), change = btnText(t('changeGame'), t('pyrChangeSub'));
+    $('w-change').innerHTML = $('lo-change').innerHTML = change;
+    $('w-new').innerHTML = $('lo-new').innerHTML = next;
+    $('lo-undo').innerHTML = btnText(t('undo'), t('undoSub'));
+  }
+  function open(id) { if (id === 'win' || id === 'lost') fillEnd(); paused = true; $(id).classList.add('open'); }
+  const inProgress = () => st && !st.won && st.moves > 0 && !stuck();
   function refreshLobby() {
     document.querySelectorAll('#lobby .seg').forEach(seg => {
       const v = String(settings[seg.dataset.key]);
@@ -535,6 +546,8 @@
   $('w-new').onclick = () => { close('win'); newGame(); };
   $('lo-undo').onclick = () => { close('lost'); undo(); };
   $('lo-new').onclick = () => { close('lost'); newGame(); };
+  $('lo-change').onclick = () => { close('lost'); showLobby(); };
+  $('w-change').onclick = () => { close('win'); showLobby(); };
   document.addEventListener('keydown', e => {
     if (paused) return;
     if (e.key === 'z' || e.key === 'Z') undo();
