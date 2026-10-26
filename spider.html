@@ -12,26 +12,28 @@
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Spider Solitaire</title>
+<script src="fit.js"></script>
 <style>
   :root { --gold:#f5d58a; --gold2:#c9a24a; --ink:#e9dfc4; --glass:rgba(255,255,255,.08); --glassb:rgba(255,255,255,.14); }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html, body { margin:0; height:100%; overflow:hidden; overscroll-behavior:none; }
-  body { background:#0b0f22 radial-gradient(circle at 30% 0%,#2a3566 0%,#141a35 55%,#0b0f22 100%) fixed; color:var(--ink);
-         font-family:-apple-system,"Segoe UI",system-ui,sans-serif; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
-  #board { position:fixed; top:env(safe-area-inset-top); bottom:env(safe-area-inset-bottom); left:env(safe-area-inset-left); right:env(safe-area-inset-right); touch-action:none; }
+  html, body { margin:0; height:var(--app-h,100%); overflow:hidden; overscroll-behavior:none; background:#0b0f22; }
+  body { color:var(--ink); font-family:-apple-system,"Segoe UI",system-ui,sans-serif; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+  /* Spelplanen täcker hela skärmen, även bakom statusfältet. HUD och docka hålls inom safe area. */
+  #board { position:fixed; top:0; left:0; right:0; height:var(--app-h,100%); touch-action:none;
+           background:radial-gradient(circle at 30% 0%,#2a3566 0%,#141a35 55%,#0b0f22 100%); }
   #board.noanim .card { transition:none !important; }
 
   /* HUD */
-  .ring { position:absolute; top:10px; left:14px; width:58px; height:58px; border-radius:50%; z-index:2000;
+  .ring { position:absolute; top:calc(env(safe-area-inset-top) + 10px); left:calc(env(safe-area-inset-left) + 14px); width:58px; height:58px; border-radius:50%; z-index:2000;
           background:conic-gradient(var(--gold) calc(var(--p,0) * 1%), rgba(255,255,255,.12) 0); display:grid; place-items:center; transition:--p .4s; }
   .ring span { width:46px; height:46px; border-radius:50%; background:#141a35; display:grid; place-items:center; font-weight:700; font-size:15px; color:var(--gold); }
-  .hud { position:absolute; top:14px; left:50%; transform:translateX(-50%); display:flex; gap:26px; align-items:center; padding:9px 24px; border-radius:40px;
+  .hud { position:absolute; top:calc(env(safe-area-inset-top) + 14px); left:50%; transform:translateX(-50%); display:flex; gap:26px; align-items:center; padding:9px 24px; border-radius:40px;
          background:var(--glass); border:1px solid var(--glassb); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
          font-size:13px; letter-spacing:.06em; white-space:nowrap; z-index:2000; }
   .hud b { color:var(--gold); font-size:17px; margin-left:6px; font-variant-numeric:tabular-nums; }
 
   /* Docka */
-  .dock { position:absolute; bottom:14px; left:50%; transform:translateX(-50%); display:flex; gap:12px; padding:9px 14px; border-radius:28px;
+  .dock { position:absolute; bottom:calc(env(safe-area-inset-bottom) + 12px); left:50%; transform:translateX(-50%); display:flex; gap:12px; padding:9px 14px; border-radius:28px;
           background:rgba(20,26,53,.55); border:1px solid var(--glassb); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); z-index:2000; }
   .dock button { all:unset; touch-action:manipulation; width:66px; height:56px; border-radius:18px; display:flex; flex-direction:column; align-items:center;
                  justify-content:center; gap:3px; background:rgba(255,255,255,.06); color:var(--ink); cursor:pointer; font-size:10.5px;
@@ -58,7 +60,7 @@
   .f .b { bottom:7%; left:0; right:0; text-align:center; font-size:calc(var(--cw) * .52); }
   .red { color:#c8102e; } .blk { color:#1a1a2a; }
   .card.stock { opacity:0; pointer-events:none; }
-  .card.gone { opacity:0; transform:scale(.25); pointer-events:none; z-index:3000 !important; }
+  .card.gone { opacity:0; transform:scale(.25); pointer-events:none; }
   .card.dragging { transition:none; box-shadow:0 12px 26px rgba(0,0,0,.55); }
   .card.hint, .slot.hint { box-shadow:0 0 0 3px var(--gold), 0 0 22px var(--gold); }
   .card.target, .slot.target { box-shadow:0 0 0 3px rgba(245,213,138,.85), 0 0 14px rgba(245,213,138,.6); }
@@ -69,13 +71,13 @@
   .toast { position:fixed; left:50%; bottom:calc(104px + env(safe-area-inset-bottom)); transform:translate(-50%,20px); opacity:0; transition:.25s;
            background:rgba(20,26,53,.92); border:1px solid var(--glassb); padding:10px 18px; border-radius:20px; font-size:15px; z-index:5000; pointer-events:none; white-space:nowrap; }
   .toast.show { opacity:1; transform:translate(-50%,0); }
-  .overlay { position:fixed; inset:0; background:rgba(5,8,20,.6); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); display:none; place-items:center; z-index:6000; padding:16px; }
+  .overlay { position:fixed; top:0; left:0; right:0; height:var(--app-h,100%); background:rgba(5,8,20,.6); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); display:none; place-items:center; z-index:6000; padding:16px; }
   .overlay.open { display:grid; }
   .panel { width:min(420px,100%); background:linear-gradient(180deg,#1d2550,#141a35); border:1px solid rgba(245,213,138,.35); border-radius:24px;
            padding:26px; text-align:center; box-shadow:0 30px 80px rgba(0,0,0,.6); }
   .panel h2 { margin:0 0 6px; color:var(--gold); font-family:Georgia,serif; font-size:28px; font-weight:400; }
   .panel p { margin:0 0 18px; opacity:.8; line-height:1.4; }
-  .btn { all:unset; display:block; touch-action:manipulation; padding:14px; border-radius:14px; background:rgba(255,255,255,.08); margin-top:10px; cursor:pointer; font-size:16px; text-align:center; }
+  .btn { all:unset; display:block; box-sizing:border-box; width:100%; touch-action:manipulation; padding:14px; border-radius:14px; background:rgba(255,255,255,.08); margin-top:10px; cursor:pointer; font-size:16px; text-align:center; }
   .btn.gold { background:linear-gradient(180deg,var(--gold),var(--gold2)); color:#1b1b2e; font-weight:700; }
   .seg { display:flex; background:rgba(255,255,255,.06); border-radius:14px; padding:4px; margin:0 0 6px; }
   .seg .btn { flex:1; margin:0; padding:10px 6px; font-size:14px; background:transparent; }
@@ -84,11 +86,25 @@
   .statgrid b { display:block; color:var(--gold); font-size:22px; font-family:Georgia,serif; font-weight:400; }
   .row { display:flex; gap:10px; } .row .btn { flex:1; }
   .label { font-size:12px; letter-spacing:.08em; text-transform:uppercase; opacity:.7; margin:4px 0 8px; }
+  .btn small { display:block; font-size:12px; font-weight:400; opacity:.75; margin-top:3px; }
+  .btn.link { background:transparent; font-size:14px; opacity:.8; }
+
+  /* Spiders startskärm: inställningar och Spela */
+  .lobby .panel { width:min(440px,100%); max-height:calc(var(--app-h,100vh) - 32px); overflow:auto; -webkit-overflow-scrolling:touch;
+                  border-radius:6px; border-color:rgba(245,213,138,.5);
+                  box-shadow:0 0 0 6px rgba(20,26,53,.9), 0 0 0 7px rgba(245,213,138,.25), 0 30px 80px rgba(0,0,0,.6); }
+  .lobby .medal { width:72px; height:72px; margin:0 auto 12px; border-radius:50%; display:grid; place-items:center; font-size:40px; color:var(--gold);
+                  background:radial-gradient(circle at 40% 30%,#2e3a75,#141a35 70%); border:3px solid var(--gold);
+                  box-shadow:0 0 0 5px rgba(245,213,138,.15), 0 0 26px rgba(245,213,138,.35); }
+  .lobby h2 { margin:0; font-size:26px; letter-spacing:.24em; text-indent:.24em; text-transform:uppercase; }
+  .lobby .orn { color:var(--gold); font-size:11px; letter-spacing:.5em; text-indent:.5em; text-transform:uppercase; opacity:.7; margin:6px 0 10px; }
+  .lobby .label { margin-top:16px; }
+  .lobby .statgrid { margin-bottom:16px; }
 
   @media (max-width:640px) {
-    .ring { width:46px; height:46px; top:8px; left:8px; } .ring span { width:36px; height:36px; font-size:12px; }
-    .hud { gap:12px; padding:7px 14px; font-size:10px; top:12px; } .hud b { font-size:14px; margin-left:4px; }
-    .dock { gap:6px; padding:7px 9px; bottom:10px; } .dock button { width:52px; height:50px; font-size:9px; } .dock button.deal { width:70px; }
+    .ring { width:46px; height:46px; top:calc(env(safe-area-inset-top) + 8px); left:8px; } .ring span { width:36px; height:36px; font-size:12px; }
+    .hud { gap:12px; padding:7px 14px; font-size:10px; top:calc(env(safe-area-inset-top) + 12px); } .hud b { font-size:14px; margin-left:4px; }
+    .dock { gap:6px; padding:7px 9px; bottom:calc(env(safe-area-inset-bottom) + 10px); } .dock button { width:52px; height:50px; font-size:9px; } .dock button.deal { width:70px; }
   }
 </style>
 </head>
@@ -106,16 +122,18 @@
 </div>
 <div class="toast" id="toast"></div>
 
-<div class="overlay" id="menu"><div class="panel">
+<div class="overlay lobby" id="lobby"><div class="panel">
+  <div class="medal">♠&#xFE0E;</div>
   <h2>Spider</h2>
+  <div class="orn">◆ Solitaire ◆</div>
   <div class="label">Svårighetsgrad</div>
-  <div class="seg" id="seg">
-    <button class="btn" data-s="1">1 färg</button><button class="btn" data-s="2">2 färger</button><button class="btn" data-s="4">4 färger</button>
-  </div>
+  <div class="seg" data-key="suits"><button class="btn" data-v="1">1 färg</button><button class="btn" data-v="2">2 färger</button><button class="btn" data-v="4">4 färger</button></div>
+  <div class="label">Tryck på kort för att flytta</div>
+  <div class="seg" data-key="tapMove"><button class="btn" data-v="true">På</button><button class="btn" data-v="false">Av</button></div>
   <div class="statgrid"><div><b id="st-played">0</b>Spelade</div><div><b id="st-won">0</b>Vunna</div><div><b id="st-best">–</b>Bästa poäng</div></div>
-  <button class="btn gold" id="m-new">Ny giv</button>
-  <button class="btn" id="m-close">Fortsätt spela</button>
-  <button class="btn" id="m-home">Till startsidan</button>
+  <button class="btn gold" id="l-resume">Fortsätt given</button>
+  <button class="btn gold" id="l-play">Spela</button>
+  <button class="btn link" id="l-home">‹ Till startsidan</button>
 </div></div>
 
 <div class="overlay" id="confirm"><div class="panel">
@@ -139,7 +157,7 @@
   const board = $('board');
 
   let st = null, hist = [], els = [], slots = [], M = null, drag = null;
-  let hints = null, hintIdx = 0, hintTimer = 0, paused = false, pendingSuits = 2;
+  let hints = null, hintIdx = 0, hintTimer = 0, paused = false;
 
   const store = {
     get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
@@ -153,10 +171,11 @@
   const saveStats = s => store.set('spider.stats', s);
   const save = () => st && store.set('spider.game', { st, hist: hist.slice(-300) });
 
-  // Inställningar delas med startsidan
-  const SKEY = 'solitaires.settings';
-  const settings = Object.assign({ suits: 2, anim: 'normal', tapMove: true }, store.get(SKEY) || {});
-  const SPEED = { normal: 1, fast: .5, off: 0 }[settings.anim] ?? 1;
+  // Animationer är en övergripande inställning (startsidan). Svårighetsgrad och tryck-för-att-flytta är Spiders egna.
+  const global = store.get('solitaires.settings') || {};
+  const SKEY = 'spider.settings';
+  const settings = Object.assign({ suits: global.suits || 2, tapMove: global.tapMove !== false }, store.get(SKEY) || {});
+  const SPEED = { normal: 1, fast: .5, off: 0 }[global.anim] ?? 1;
   board.style.setProperty('--dur', (.3 * SPEED) + 's');
 
   // ---------- Regler ----------
@@ -184,6 +203,7 @@
     if (col.length < 13) return;
     const i = col.length - 13;
     if (st.deck[col[i].id].r !== 13 || !movable(c, i)) return;
+    // Esset (överst) flyger först, kungen sist
     col.splice(i).reverse().forEach((x, k) => { st.done.push(x.id); delay[x.id] = base + k * 45; });
     st.score += 100;
     flipTop(c);
@@ -220,22 +240,35 @@
     st.cols[d].push(...st.cols[c].splice(i));
     flipTop(c);
     st.score--; st.moves++;
-    const delay = {};
-    checkComplete(d, delay, 320);
-    after({ delay });
+    after({});
+    completeLater([d], 300);
+  }
+  // En färdig serie tas bort först när draget har landat, så att korten hinner lägga sig i ordning i kolumnen
+  let busy = false;
+  function completeLater(cols, wait) {
+    const game = st;
+    if (!cols.some(c => { const col = st.cols[c], i = col.length - 13; return i >= 0 && st.deck[col[i].id].r === 13 && movable(c, i); })) return;
+    busy = true;
+    setTimeout(() => {
+      busy = false;
+      if (st !== game) return;
+      const delay = {};
+      cols.forEach(c => checkComplete(c, delay, 0));
+      after({ delay });
+    }, wait * SPEED + 60);
   }
   function deal() {
-    if (!st.stock.length || st.won) return;
+    if (busy || !st.stock.length || st.won) return;
     if (st.cols.some(c => !c.length)) { toast('Alla kolumner måste ha kort innan du ger'); return; }
     pushHist();
     const delay = {};
     for (let c = 0; c < 10; c++) { const id = st.stock.pop(); st.cols[c].push({ id, up: true }); delay[id] = c * 45; }
     st.score--; st.moves++;
-    for (let c = 0; c < 10; c++) checkComplete(c, delay, 700);
     after({ delay });
+    completeLater([...Array(10).keys()], 9 * 45 + 300);
   }
   function undo() {
-    if (!hist.length || st.won) return;
+    if (busy || !hist.length || st.won) return;
     const moves = st.moves;
     Object.assign(st, JSON.parse(hist.pop()));
     st.score--; st.moves = moves + 1;
@@ -287,7 +320,7 @@
     return res.sort((a, b) => b.sc - a.sc);
   }
   function hint() {
-    if (st.won) return;
+    if (busy || st.won) return;
     if (!hints) { hints = findMoves(); hintIdx = 0; }
     clearHintMarks();
     if (!hints.length) {
@@ -316,16 +349,18 @@
     });
   }
   function layout() {
-    const W = board.clientWidth, H = board.clientHeight, small = W <= 640;
+    const W = board.clientWidth, H = board.clientHeight;
     const padX = Math.max(6, W * .012), colW = (W - 2 * padX) / 10;
-    const top = small ? 64 : 80, bottom = H - (small ? 80 : 94);
+    // Korten får ytan mellan HUD:en och dockan (som redan tar hänsyn till statusfält och hemindikator)
+    const br = board.getBoundingClientRect(), db = $('b-deal').getBoundingClientRect(), rr = $('ring').getBoundingClientRect();
+    const top = Math.max(rr.bottom, document.querySelector('.hud').getBoundingClientRect().bottom) - br.top + 12;
+    const bottom = document.querySelector('.dock').getBoundingClientRect().top - br.top - 8;
     let cw = Math.min(colW * .88, 124);
     cw = Math.min(cw, (bottom - top) * .32 / 1.4);
     const ch = cw * 1.4;
     board.style.setProperty('--cw', cw + 'px');
     board.style.setProperty('--ch', ch + 'px');
     const colX = [...Array(10)].map((_, c) => padX + c * colW + (colW - cw) / 2);
-    const br = board.getBoundingClientRect(), db = $('b-deal').getBoundingClientRect(), rr = $('ring').getBoundingClientRect();
     M = { padX, colW, cw, ch, colX, top, bottom,
           sx: db.left - br.left + db.width / 2 - cw / 2, sy: db.top - br.top + db.height / 2 - ch / 2,
           rx: rr.left - br.left + rr.width / 2 - cw / 2, ry: rr.top - br.top + rr.height / 2 - ch / 2 };
@@ -348,7 +383,7 @@
       e.className = cls; e.style.transform = ''; e.style.transitionDelay = (delay[id] || 0) * SPEED + 'ms';
     };
     st.stock.forEach(id => set(id, M.sx, M.sy, 1, 'card stock'));
-    st.done.forEach(id => set(id, M.rx, M.ry, 3000, 'card up gone'));
+    st.done.forEach((id, j) => set(id, M.rx, M.ry, 3100 - j % 13, 'card up gone'));
     st.cols.forEach((col, c) => {
       const ys = colOffsets(col);
       col.forEach((x, k) => set(x.id, M.colX[c], M.top + ys[k], k + 1, 'card' + (x.up ? ' up' : '')));
@@ -384,7 +419,7 @@
   const colAt = x => Math.max(0, Math.min(9, Math.floor((x - M.padX) / M.colW)));
 
   board.addEventListener('pointerdown', e => {
-    if (drag || st.won) return;
+    if (drag || busy || !st || st.won) return;
     const el = e.target.closest('.card');
     if (!el) return;
     const id = +el.dataset.id, loc = find(id);
@@ -432,23 +467,41 @@
   // ---------- Knappar & dialoger ----------
   function open(id) { paused = true; $(id).classList.add('open'); }
   function close(id) { $(id).classList.remove('open'); paused = !!document.querySelector('.overlay.open'); }
-  function refreshMenu() {
-    document.querySelectorAll('#seg .btn').forEach(b => b.classList.toggle('on', +b.dataset.s === pendingSuits));
-    const s = loadStats()[pendingSuits];
+  const colors = n => n + (n === 1 ? ' färg' : ' färger');
+  const inProgress = () => st && !st.won && st.moves > 0;
+  function refreshLobby() {
+    document.querySelectorAll('#lobby .seg').forEach(seg => {
+      const v = String(settings[seg.dataset.key]);
+      seg.querySelectorAll('.btn').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+    });
+    const s = loadStats()[settings.suits];
     $('st-played').textContent = s.played; $('st-won').textContent = s.won; $('st-best').textContent = s.best || '–';
+    const going = inProgress();
+    $('l-resume').style.display = going ? '' : 'none';
+    if (going) $('l-resume').innerHTML = `Fortsätt given<small>${colors(st.suits)} · ${st.done.length / 13} av 8 klara</small>`;
+    $('l-play').className = going ? 'btn' : 'btn gold';
+    $('l-play').innerHTML = `${going ? 'Ny giv' : 'Spela'}<small>${colors(settings.suits)}</small>`;
   }
+  function showLobby() { refreshLobby(); open('lobby'); }
+  document.querySelectorAll('#lobby .seg').forEach(seg => seg.addEventListener('click', e => {
+    const b = e.target.closest('.btn');
+    if (!b) return;
+    const key = seg.dataset.key;
+    settings[key] = key === 'tapMove' ? b.dataset.v === 'true' : +b.dataset.v;
+    store.set(SKEY, settings);
+    refreshLobby();
+  }));
   $('b-deal').onclick = deal;
   $('b-undo').onclick = undo;
   $('b-hint').onclick = hint;
-  $('b-menu').onclick = () => { pendingSuits = st.suits; refreshMenu(); open('menu'); };
-  $('b-new').onclick = () => { if (st.moves > 0 && !st.won) open('confirm'); else newGame(st.suits); };
-  document.querySelectorAll('#seg .btn').forEach(b => b.onclick = () => { pendingSuits = +b.dataset.s; refreshMenu(); });
-  $('m-new').onclick = () => { close('menu'); newGame(pendingSuits); };
-  $('m-close').onclick = () => close('menu');
-  $('m-home').onclick = () => { save(); location.href = './'; };
+  $('b-menu').onclick = showLobby;
+  $('b-new').onclick = () => { if (inProgress()) open('confirm'); else newGame(settings.suits); };
+  $('l-resume').onclick = () => close('lobby');
+  $('l-play').onclick = () => { if (inProgress()) open('confirm'); else { close('lobby'); newGame(settings.suits); } };
+  $('l-home').onclick = () => { save(); location.href = './'; };
   $('c-no').onclick = () => close('confirm');
-  $('c-yes').onclick = () => { close('confirm'); newGame(st.suits); };
-  $('w-new').onclick = () => { close('win'); newGame(st.suits); };
+  $('c-yes').onclick = () => { close('confirm'); close('lobby'); newGame(settings.suits); };
+  $('w-new').onclick = () => { close('win'); newGame(settings.suits); };
   document.addEventListener('keydown', e => {
     if (paused) return;
     if (e.key === 'z' || e.key === 'Z') undo();
@@ -464,19 +517,19 @@
   }, 1000);
   window.addEventListener('pagehide', save);
   document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
-  window.addEventListener('resize', () => { if (drag || !st) return; layout(); instant(() => render()); });
+  window.addEventListener('resize', () => { if (drag) return; layout(); if (st) instant(() => render()); });
 
   // ---------- Start ----------
   for (let c = 0; c < 10; c++) { const s = document.createElement('div'); s.className = 'slot'; board.appendChild(s); slots.push(s); }
   layout();
   const saved = store.get('spider.game');
-  // En påbörjad giv återupptas. En orörd giv byts ut om svårighetsgraden har ändrats.
-  if (saved && saved.st && saved.st.deck && saved.st.deck.length === 104 && !saved.st.won &&
-      (saved.st.moves > 0 || saved.st.suits === settings.suits)) {
+  if (saved && saved.st && saved.st.deck && saved.st.deck.length === 104 && !saved.st.won && saved.st.moves > 0) {
     st = saved.st; hist = saved.hist || [];
+    for (let c = 0; c < 10; c++) checkComplete(c, {}, 0);
     buildCards();
     instant(() => render());
-  } else newGame(settings.suits);
+  }
+  showLobby();
 
   // Offline-stöd (kräver https eller localhost)
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {

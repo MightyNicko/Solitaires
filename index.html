@@ -12,19 +12,22 @@
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Solitaires</title>
+<script src="fit.js"></script>
 <style>
   :root { --gold:#f5d58a; --gold2:#c9a24a; --ink:#e9dfc4; --navy:#141a35;
-          --u:min(1vw, 1.3333vh); }
-  @supports (height:1dvh) { :root { --u:min(1vw, 1.3333dvh); } }
+          --u:min(1vw, calc(var(--app-h,100vh) / 75)); }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html, body { margin:0; height:100%; overflow:hidden; overscroll-behavior:none; }
-  body { background:#0b0f22 radial-gradient(circle at 50% 38%,#2a3566 0%,#141a35 50%,#0b0f22 100%) fixed; color:var(--ink);
+  html, body { margin:0; height:var(--app-h,100%); overflow:hidden; overscroll-behavior:none; background:#0b0f22; }
+  /* Hela appen täcker skärmen, även bakom statusfältet (se fit.js) */
+  #app { position:fixed; top:0; left:0; right:0; height:var(--app-h,100%); overflow:hidden;
+         background:radial-gradient(circle at 50% 38%,#2a3566 0%,#141a35 50%,#0b0f22 100%); }
+  body { color:var(--ink);
          font-family:-apple-system,"Segoe UI",system-ui,sans-serif; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
          transition:opacity .25s; }
   body.leaving { opacity:0; }
 
   /* Bakgrund: stjärnor, ram och hörn */
-  .stars { position:fixed; inset:0; pointer-events:none; }
+  .stars { position:absolute; inset:0; pointer-events:none; }
   .star { position:absolute; width:var(--s); height:var(--s); margin:calc(var(--s) / -2) 0 0 calc(var(--s) / -2); border-radius:50%;
           background:#fff; box-shadow:0 0 calc(var(--s) * 2) rgba(255,255,255,.7); animation:twinkle var(--t) ease-in-out var(--d) infinite; }
   .star.gold { background:var(--gold); box-shadow:0 0 calc(var(--s) * 2.5) rgba(245,213,138,.8); }
@@ -32,7 +35,7 @@
                 clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%); animation-name:sparkle; }
   @keyframes twinkle { 0%,100% { opacity:.25; transform:scale(.7); } 50% { opacity:1; transform:scale(1); } }
   @keyframes sparkle { 0%,100% { opacity:.15; transform:scale(.4) rotate(0deg); } 50% { opacity:1; transform:scale(1) rotate(45deg); } }
-  .frame { position:fixed; pointer-events:none;
+  .frame { position:absolute; pointer-events:none;
            top:calc(env(safe-area-inset-top) + max(2.6 * var(--u), 12px)); bottom:calc(env(safe-area-inset-bottom) + max(2.6 * var(--u), 12px));
            left:calc(env(safe-area-inset-left) + max(2.6 * var(--u), 12px)); right:calc(env(safe-area-inset-right) + max(2.6 * var(--u), 12px));
            border:1px solid rgba(245,213,138,.5); border-radius:4px; }
@@ -45,7 +48,7 @@
   .c4 { bottom:-1px; right:-1px; border-left:0; border-top:0; } .c4::after { bottom:20%; right:20%; }
 
   /* Svävande kort */
-  .card { position:fixed; width:max(13 * var(--u), 70px); height:calc(max(13 * var(--u), 70px) * 1.4); border-radius:9%/6.5%;
+  .card { position:absolute; width:max(13 * var(--u), 70px); height:calc(max(13 * var(--u), 70px) * 1.4); border-radius:9%/6.5%;
           background:linear-gradient(180deg,#fffaf0,#f3ead6); border:1px solid #d6c08a; box-shadow:0 1.2vmin 2.6vmin rgba(0,0,0,.5);
           font-family:Georgia,serif; pointer-events:none; animation:bob 7s ease-in-out infinite; }
   .card .r { position:absolute; top:6%; left:9%; font-size:max(2.8 * var(--u), 15px); font-weight:700; line-height:1; }
@@ -61,7 +64,7 @@
   @media (max-width:520px) { .card { display:none; } }
 
   /* Mitten: medaljong, titel, knappar */
-  .stage { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px; }
+  .stage { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px; }
   .medal-wrap { position:relative; width:max(22 * var(--u), 120px); height:max(22 * var(--u), 120px); }
   .rays { position:absolute; left:50%; top:50%; width:170vmax; height:170vmax; margin:-85vmax 0 0 -85vmax; pointer-events:none; z-index:-1;
           background:repeating-conic-gradient(rgba(245,213,138,.075) 0 4deg,transparent 4deg 12deg);
@@ -95,15 +98,15 @@
   .deco.line { background:linear-gradient(180deg,var(--gold),var(--gold2)); color:var(--gold); }
   .deco.line::before { content:""; position:absolute; inset:2px; background:var(--navy); clip-path:inherit; }
   .deco.line > * { position:relative; }
-  .version { position:fixed; bottom:calc(env(safe-area-inset-bottom) + max(4.4 * var(--u), 22px)); left:0; right:0; text-align:center;
+  .version { position:absolute; bottom:calc(env(safe-area-inset-bottom) + max(4.4 * var(--u), 22px)); left:0; right:0; text-align:center;
              font-size:11px; letter-spacing:.2em; opacity:.35; pointer-events:none; }
 
   /* Inställningar */
-  .overlay { position:fixed; inset:0; background:rgba(5,8,20,.6); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+  .overlay { position:fixed; top:0; left:0; right:0; height:var(--app-h,100%); background:rgba(5,8,20,.6); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
              display:none; place-items:center; z-index:10; padding:16px; }
   .overlay.open { display:grid; animation:fadein .2s; }
   @keyframes fadein { from { opacity:0; } }
-  .panel { position:relative; width:min(480px,100%); max-height:calc(100dvh - 32px); overflow:auto; -webkit-overflow-scrolling:touch;
+  .panel { position:relative; width:min(480px,100%); max-height:calc(var(--app-h,100vh) - 32px); overflow:auto; -webkit-overflow-scrolling:touch;
            background:linear-gradient(180deg,#1d2550,#141a35); border:1px solid rgba(245,213,138,.5); border-radius:6px;
            padding:30px 26px 24px; box-shadow:0 0 0 6px rgba(20,26,53,.9), 0 0 0 7px rgba(245,213,138,.25), 0 30px 80px rgba(0,0,0,.6); }
   .panel h2 { margin:0 0 4px; text-align:center; color:var(--gold); font:400 24px Georgia,serif; letter-spacing:.24em; text-indent:.24em; text-transform:uppercase; }
@@ -126,9 +129,11 @@
   .pbtn.warn.armed { border-color:#e5484d; color:#ff8a8d; }
 
   @media (prefers-reduced-motion:reduce) { .rays, .card, .medal, .star { animation:none; } .fade { animation:none; } }
+  body.calm .rays, body.calm .card, body.calm .medal, body.calm .star { animation:none; }
 </style>
 </head>
 <body>
+<div id="app">
 <div class="stars"></div>
 <div class="frame"><div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div></div>
 <div class="card left red"><span class="r">A</span><span class="s">♥&#xFE0E;</span><span class="b">♥&#xFE0E;</span></div>
@@ -141,31 +146,28 @@
   <div class="sub fade d2">Patienser för iPad</div>
   <div class="menu fade d3">
     <button class="deco gold" id="play">Spider<small id="play-sub">Ny giv</small></button>
-    <button class="deco line" id="open-settings"><span>Inställningar</span><small>Spel &amp; statistik</small></button>
+    <button class="deco line" id="open-settings"><span>Inställningar</span><small>Animationer &amp; data</small></button>
   </div>
 </main>
-<div class="version">v0.1.1025.2310</div>
+<div class="version">v0.1.1026.1335</div>
+</div>
 
 <div class="overlay" id="settings"><div class="panel">
   <h2>Inställningar</h2>
   <div class="orn">◆ ◆ ◆</div>
 
   <div class="group">
-    <div class="label">Spider – svårighetsgrad <em>gäller nästa nya giv</em></div>
-    <div class="seg" data-key="suits"><button data-v="1">1 färg</button><button data-v="2">2 färger</button><button data-v="4">4 färger</button></div>
-  </div>
-  <div class="group">
-    <div class="label">Animationer</div>
+    <div class="label">Animationer <em>i alla spel</em></div>
     <div class="seg" data-key="anim"><button data-v="normal">Normala</button><button data-v="fast">Snabba</button><button data-v="off">Av</button></div>
   </div>
   <div class="group">
-    <div class="label">Tryck på kort för att flytta</div>
-    <div class="seg" data-key="tapMove"><button data-v="true">På</button><button data-v="false">Av</button></div>
+    <div class="label">Bakgrundseffekter <em>stjärnor, strålar, glöd</em></div>
+    <div class="seg" data-key="effects"><button data-v="true">På</button><button data-v="false">Av</button></div>
   </div>
   <div class="group">
-    <div class="label">Statistik – Spider</div>
-    <table><thead><tr><th>Nivå</th><th>Spelade</th><th>Vunna</th><th>Bästa</th></tr></thead><tbody id="stats"></tbody></table>
-    <button class="pbtn warn" id="reset">Nollställ statistik</button>
+    <div class="label">Data</div>
+    <button class="pbtn warn" id="reset-stats" data-done="Statistiken är nollställd">Nollställ statistik för alla spel</button>
+    <button class="pbtn warn" id="reset-games" data-done="Sparade spel är raderade">Radera sparade spel</button>
   </div>
   <button class="pbtn gold" id="close">Klar</button>
 </div></div>
@@ -178,9 +180,13 @@
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
     del(k) { try { localStorage.removeItem(k); } catch (e) {} },
   };
+  // Övergripande inställningar. Spelens egna val sparas av respektive spel (t.ex. spider.settings).
   const SKEY = 'solitaires.settings';
-  const settings = Object.assign({ suits: 2, anim: 'normal', tapMove: true }, store.get(SKEY) || {});
+  const g0 = store.get(SKEY) || {};
+  const settings = { anim: g0.anim || 'normal', effects: g0.effects !== false };
   const colors = n => n + (n === 1 ? ' färg' : ' färger');
+  const applyEffects = () => document.body.classList.toggle('calm', !settings.effects);
+  applyEffects();
 
   // Stjärnhimmel: små vita och guldiga stjärnor plus några fyruddiga gnistor, alla i egen takt
   const sky = document.querySelector('.stars'), rnd = (a, b) => a + Math.random() * (b - a);
@@ -195,44 +201,45 @@
 
   function refreshPlay() {
     const g = store.get('spider.game'), st = g && g.st;
+    const sp = store.get('spider.settings') || {};
     $('play-sub').textContent = st && !st.won && st.moves > 0
       ? `Fortsätt · ${st.done.length / 13} av 8 klara`
-      : `Ny giv · ${colors(settings.suits)}`;
+      : `Solitaire · ${colors(sp.suits || g0.suits || 2)}`;
   }
   function refreshSettings() {
     document.querySelectorAll('.seg').forEach(seg => {
       const v = String(settings[seg.dataset.key]);
       seg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
     });
-    const stats = store.get('spider.stats') || {};
-    $('stats').innerHTML = [1, 2, 4].map(n => {
-      const s = stats[n] || { played: 0, won: 0, best: 0 };
-      return `<tr><td>${colors(n)}</td><td>${s.played}</td><td>${s.won}</td><td><b>${s.best || '–'}</b></td></tr>`;
-    }).join('');
   }
 
   document.querySelectorAll('.seg').forEach(seg => seg.addEventListener('click', e => {
     const b = e.target.closest('button');
     if (!b) return;
     const key = seg.dataset.key, v = b.dataset.v;
-    settings[key] = key === 'suits' ? +v : key === 'tapMove' ? v === 'true' : v;
-    store.set(SKEY, settings);
-    refreshSettings(); refreshPlay();
+    settings[key] = key === 'effects' ? v === 'true' : v;
+    store.set(SKEY, Object.assign(store.get(SKEY) || {}, settings));
+    refreshSettings(); applyEffects();
   }));
 
-  let armTimer = 0;
-  $('reset').onclick = () => {
-    const b = $('reset');
-    if (!b.classList.contains('armed')) {
-      b.classList.add('armed'); b.textContent = 'Tryck igen för att nollställa';
-      armTimer = setTimeout(() => { b.classList.remove('armed'); b.textContent = 'Nollställ statistik'; }, 3000);
-      return;
-    }
-    clearTimeout(armTimer);
-    store.del('spider.stats');
-    b.classList.remove('armed'); b.textContent = 'Statistiken är nollställd';
-    refreshSettings();
-  };
+  // Knappar som raderar något kräver två tryck
+  function twoStep(id, action) {
+    const b = $(id), label = b.textContent;
+    let timer = 0;
+    b.onclick = () => {
+      if (!b.classList.contains('armed')) {
+        b.classList.add('armed'); b.textContent = 'Tryck igen för att bekräfta';
+        timer = setTimeout(() => { b.classList.remove('armed'); b.textContent = label; }, 3000);
+        return;
+      }
+      clearTimeout(timer);
+      action();
+      b.classList.remove('armed'); b.textContent = b.dataset.done;
+      setTimeout(() => b.textContent = label, 2500);
+    };
+  }
+  twoStep('reset-stats', () => store.del('spider.stats'));
+  twoStep('reset-games', () => { store.del('spider.game'); refreshPlay(); });
   $('open-settings').onclick = () => { refreshSettings(); $('settings').classList.add('open'); };
   $('close').onclick = () => $('settings').classList.remove('open');
   $('settings').onclick = e => { if (e.target.id === 'settings') $('settings').classList.remove('open'); };
