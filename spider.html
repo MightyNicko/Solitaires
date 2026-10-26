@@ -173,7 +173,7 @@
   };
   function loadStats() {
     const s = store.get('spider.stats') || {};
-    for (const k of [1, 2, 4]) s[k] = s[k] || { played:0, won:0, best:0 };
+    for (const k of [1, 2, 4]) s[k] = s[k] || { played:0, won:0, best:0, fast:0 };
     return s;
   }
   const saveStats = s => store.set('spider.stats', s);
@@ -285,7 +285,9 @@
   function win() {
     st.won = true; save(); updateHud();
     const stats = loadStats(), s = stats[st.suits];
-    s.won++; if (st.score > s.best) s.best = st.score; saveStats(stats);
+    s.won++; if (st.score > s.best) s.best = st.score;
+    if (!s.fast || st.time < s.fast) s.fast = st.time;   // snabbaste vinst i sekunder
+    saveStats(stats);
     setTimeout(() => { $('win-text').textContent = `${st.score} poäng · ${st.moves} drag · ${fmt(st.time)}`; open('win'); }, 1200);
   }
   function bestDest(c, i) {

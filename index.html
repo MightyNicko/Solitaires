@@ -120,6 +120,18 @@
   th:first-child, td:first-child { text-align:left; }
   td { padding:7px 0; border-top:1px solid rgba(255,255,255,.08); text-align:right; }
   td b { color:var(--gold); font-weight:400; font-family:Georgia,serif; font-size:16px; }
+  .panel.wide { width:min(640px,100%); }
+  .game-stats { margin-top:18px; }
+  .game-stats + .game-stats { margin-top:28px; padding-top:22px; border-top:1px solid rgba(245,213,138,.2); }
+  .game-stats h3 { display:flex; align-items:center; gap:10px; margin:0 0 12px; font:400 19px Georgia,serif; color:var(--gold); letter-spacing:.06em; }
+  .game-stats h3 i { font-style:normal; width:32px; height:32px; border-radius:50%; border:2px solid var(--gold); display:grid; place-items:center; font-size:17px;
+                     background:radial-gradient(circle at 40% 30%,#2e3a75,#141a35 70%); }
+  .summary { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+  .summary div { background:rgba(255,255,255,.05); border:1px solid rgba(245,213,138,.15); border-radius:10px; padding:10px 6px;
+                 text-align:center; font-size:11px; letter-spacing:.1em; text-transform:uppercase; }
+  .summary b { display:block; font:400 26px Georgia,serif; color:var(--gold); letter-spacing:0; margin-bottom:2px; }
+  tr.total td { font-weight:700; border-top:1px solid rgba(245,213,138,.35); }
+  @media (max-width:520px) { .hide-sm { display:none; } }
   .pbtn { all:unset; display:block; box-sizing:border-box; width:100%; text-align:center; padding:13px; border-radius:12px; margin-top:12px;
           cursor:pointer; font-size:15px; touch-action:manipulation; background:rgba(255,255,255,.08); }
   .pbtn.gold { background:linear-gradient(180deg,var(--gold),var(--gold2)); color:#1b1b2e; font-weight:700; margin-top:22px; }
@@ -149,16 +161,24 @@
 
 <main class="stage">
   <div class="medal-wrap"><div class="rays"></div><div class="medal"><span>♠&#xFE0E;</span></div></div>
-  <div class="suits fade d1"><span>♥&#xFE0E;</span><span>♦&#xFE0E;</span><span>♣&#xFE0E;</span></div>
+  <div class="suits fade d1"><span>♠&#xFE0E;</span><span>♥&#xFE0E;</span><span>♦&#xFE0E;</span><span>♣&#xFE0E;</span></div>
   <h1 class="fade d1">Solitaires</h1>
   <div class="sub fade d2">Patienser för iPad</div>
   <div class="menu fade d3">
     <button class="deco gold" id="play">Spider<small id="play-sub">Ny giv</small></button>
+    <button class="deco line" id="open-stats"><span>Statistik</span><small>Resultat &amp; rekord</small></button>
     <button class="deco line" id="open-settings"><span>Inställningar</span><small>Animationer &amp; data</small></button>
   </div>
 </main>
-<div class="version">v0.1.1026.1456</div>
+<div class="version">v0.1.1026.1517</div>
 </div>
+
+<div class="overlay" id="stats"><div class="panel wide">
+  <h2>Statistik</h2>
+  <div class="orn">◆ ◆ ◆</div>
+  <div id="stats-body"></div>
+  <button class="pbtn gold" id="stats-close">Klar</button>
+</div></div>
 
 <div class="overlay" id="settings"><div class="panel">
   <h2>Inställningar</h2>
@@ -193,6 +213,32 @@
   const g0 = store.get(SKEY) || {};
   const settings = { anim: g0.anim || 'normal', effects: g0.effects !== false };
   const colors = n => n + (n === 1 ? ' färg' : ' färger');
+
+  // Alla spel i appen. Ett nytt spel läggs till här (och får en knapp i menyn).
+  // Varje spel sparar sin statistik under statsKey som { nivå: { played, won, best, fast } },
+  // där best är bästa poäng och fast är snabbaste vinst i sekunder.
+  const GAMES = [
+    { id: 'spider', name: 'Spider Solitaire', icon: '♠︎', url: 'spider.html', statsKey: 'spider.stats',
+      levels: [{ key: 1, label: '1 färg' }, { key: 2, label: '2 färger' }, { key: 4, label: '4 färger' }] },
+  ];
+  const fmtTime = t => t ? Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0') : '–';
+  const pct = (won, played) => played ? Math.round(won / played * 100) + ' %' : '–';
+  function renderStats() {
+    $('stats-body').innerHTML = GAMES.map(g => {
+      const data = store.get(g.statsKey) || {};
+      const rows = g.levels.map(l => Object.assign({ played: 0, won: 0, best: 0, fast: 0 }, data[l.key], { label: l.label }));
+      const tot = rows.reduce((a, r) => ({
+        label: 'Totalt', played: a.played + r.played, won: a.won + r.won, best: Math.max(a.best, r.best),
+        fast: r.fast && (!a.fast || r.fast < a.fast) ? r.fast : a.fast,
+      }), { played: 0, won: 0, best: 0, fast: 0 });
+      const row = (r, cls) => `<tr class="${cls || ''}"><td>${r.label}</td><td>${r.played}</td><td>${r.won}</td>` +
+        `<td class="hide-sm">${pct(r.won, r.played)}</td><td><b>${r.best || '–'}</b></td><td>${fmtTime(r.fast)}</td></tr>`;
+      return `<section class="game-stats"><h3><i>${g.icon}</i>${g.name}</h3>
+        <div class="summary"><div><b>${tot.played}</b>Spelade</div><div><b>${tot.won}</b>Vunna</div><div><b>${pct(tot.won, tot.played)}</b>Vinster</div></div>
+        <table><thead><tr><th>Nivå</th><th>Spelade</th><th>Vunna</th><th class="hide-sm">Vinster</th><th>Bästa</th><th>Snabbast</th></tr></thead>
+        <tbody>${rows.map(r => row(r)).join('')}${row(tot, 'total')}</tbody></table></section>`;
+    }).join('');
+  }
   const applyEffects = () => document.body.classList.toggle('calm', !settings.effects);
   applyEffects();
 
@@ -251,6 +297,9 @@
   $('open-settings').onclick = () => { refreshSettings(); $('settings').classList.add('open'); };
   $('close').onclick = () => $('settings').classList.remove('open');
   $('settings').onclick = e => { if (e.target.id === 'settings') $('settings').classList.remove('open'); };
+  $('open-stats').onclick = () => { renderStats(); $('stats').classList.add('open'); };
+  $('stats-close').onclick = () => $('stats').classList.remove('open');
+  $('stats').onclick = e => { if (e.target.id === 'stats') $('stats').classList.remove('open'); };
   $('play').onclick = () => { document.body.classList.add('leaving'); setTimeout(() => location.href = 'spider.html', 220); };
   window.addEventListener('pageshow', () => { document.body.classList.remove('leaving'); refreshPlay(); });
 
