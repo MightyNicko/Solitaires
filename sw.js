@@ -2,9 +2,9 @@
 // Online hämtas alltid senaste versionen från nätet (och cachen uppdateras).
 // Cachen används bara offline, eller om nätet inte svarar inom TIMEOUT.
 // Byt CACHE när filer läggs till eller tas bort.
-const CACHE = 'solitaires-v4';
+const CACHE = 'solitaires-v5';
 const TIMEOUT = 3000;
-const FILES = ['./', './index.html', './spider.html', './fit.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
+const FILES = ['./', './index.html', './spider.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

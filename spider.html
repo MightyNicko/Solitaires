@@ -5,20 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Solitaires">
-<meta name="theme-color" content="#0b0f22">
+<meta name="theme-color" content="#10152e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Spider Solitaire</title>
-<script src="fit.js"></script>
 <style>
   :root { --gold:#f5d58a; --gold2:#c9a24a; --ink:#e9dfc4; --glass:rgba(255,255,255,.08); --glassb:rgba(255,255,255,.14); }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html, body { margin:0; height:var(--app-h,100%); overflow:hidden; overscroll-behavior:none; background:#0b0f22; }
   body { color:var(--ink); font-family:-apple-system,"Segoe UI",system-ui,sans-serif; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
-  /* Spelplanen täcker hela skärmen, även bakom statusfältet. HUD och docka hålls inom safe area. */
+  /* Spelplanen täcker hela skärmen. Överkanten har samma färg som statusfältet (theme-color #10152e). */
   #board { position:fixed; top:0; left:0; right:0; height:var(--app-h,100%); touch-action:none;
            background:linear-gradient(180deg,#10152e 0,rgba(16,21,46,0) 90px), radial-gradient(circle at 50% 40%,#2a3566 0%,#141a35 55%,#0b0f22 100%); }
   #board.noanim .card { transition:none !important; }
@@ -106,15 +104,9 @@
     .hud { gap:12px; padding:7px 14px; font-size:10px; top:calc(env(safe-area-inset-top) + 12px); } .hud b { font-size:14px; margin-left:4px; }
     .dock { gap:6px; padding:7px 9px; bottom:calc(env(safe-area-inset-bottom) + 10px); } .dock button { width:52px; height:50px; font-size:9px; } .dock button.deal { width:70px; }
   }
-  /* iPadOS 26 gör annars ytan bakom statusfältet suddig. Den letar efter ett fast element överst
-     (minst 90 % brett, över 10 px högt) och färgar statusfältet i dess bakgrundsfärg i stället.
-     background-clip:text gör att remsan själv inte ritar något. Färgen = bakgrundens överkant. */
-  .sb-band { position:fixed; top:0; left:0; right:0; height:12px; z-index:2147483647; pointer-events:none;
-             background-color:#10152e; -webkit-background-clip:text; background-clip:text; color:transparent; }
 </style>
 </head>
 <body>
-<div class="sb-band"></div>
 <div id="board">
   <div class="ring" id="ring"><span id="sets">0/8</span></div>
   <div class="hud"><span>POÄNG<b id="score">500</b></span><span>DRAG<b id="moves">0</b></span><span>TID<b id="time">0:00</b></span></div>
