@@ -18,7 +18,7 @@
   html, body { margin:0; height:var(--app-h,100%); overflow:hidden; overscroll-behavior:none; background:#0b0f22; }
   /* Hela appen täcker skärmen. Överkanten har samma färg som statusfältet (theme-color #10152e). */
   #app { position:fixed; top:0; left:0; right:0; height:var(--app-h,100%); overflow:hidden;
-         background:linear-gradient(180deg,#10152e 0,#10152e calc(var(--edge) + 16px),rgba(16,21,46,0) calc(var(--edge) + 100px)), radial-gradient(circle at 50% 38%,#2a3566 0%,#141a35 50%,#0b0f22 100%); }
+         background:linear-gradient(180deg,#10152e 0,rgba(16,21,46,0) 90px), radial-gradient(circle at 50% 38%,#2a3566 0%,#141a35 50%,#0b0f22 100%); }
   body { color:var(--ink);
          font-family:-apple-system,"Segoe UI",system-ui,sans-serif; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
          transition:opacity .25s; }
@@ -34,7 +34,7 @@
   @keyframes twinkle { 0%,100% { opacity:.25; transform:scale(.7); } 50% { opacity:1; transform:scale(1); } }
   @keyframes sparkle { 0%,100% { opacity:.15; transform:scale(.4) rotate(0deg); } 50% { opacity:1; transform:scale(1) rotate(45deg); } }
   .frame { position:absolute; pointer-events:none;
-           top:calc(env(safe-area-inset-top) + var(--edge) + max(2.6 * var(--u), 12px)); bottom:calc(env(safe-area-inset-bottom) + max(2.6 * var(--u), 12px));
+           top:calc(env(safe-area-inset-top) + max(2.6 * var(--u), 12px)); bottom:calc(env(safe-area-inset-bottom) + max(2.6 * var(--u), 12px));
            left:calc(env(safe-area-inset-left) + max(2.6 * var(--u), 12px)); right:calc(env(safe-area-inset-right) + max(2.6 * var(--u), 12px));
            border:1px solid rgba(245,213,138,.5); border-radius:4px; }
   .frame::before { content:""; position:absolute; inset:max(.8 * var(--u), 5px); border:1px solid rgba(245,213,138,.22); }
@@ -128,19 +128,9 @@
 
   @media (prefers-reduced-motion:reduce) { .rays, .card, .medal, .star { animation:none; } .fade { animation:none; } }
   body.calm .rays, body.calm .card, body.calm .medal, body.calm .star { animation:none; }
-
-  /* iPadOS 26 suddar till de översta ~40 punkterna i hemskärmsappar. Den hoppar över det när ett fast,
-     helbrett och enfärgat element (över 10 px högt) ligger i överkanten. Därför finns .edge-bar, med
-     samma färg som bakgrundens överkant. Som hemskärmsapp flyttas allt viktigt ned med --edge,
-     så att ingenting hamnar i den zonen. */
-  :root { --edge:0px; }
-  @media (display-mode: standalone) { :root { --edge:34px; } }
-  .edge-bar { position:fixed; top:0; left:0; right:0; height:max(env(safe-area-inset-top), 12px);
-              background:#10152e; z-index:2147483647; pointer-events:none; }
 </style>
 </head>
 <body>
-<div class="edge-bar"></div>
 <div id="app">
 <div class="stars"></div>
 <div class="frame"><div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div></div>
@@ -157,7 +147,7 @@
     <button class="deco line" id="open-settings"><span>Inställningar</span><small>Animationer &amp; data</small></button>
   </div>
 </main>
-<div class="version">v0.1.1026.1441</div>
+<div class="version">v0.1.1026.1447</div>
 </div>
 
 <div class="overlay" id="settings"><div class="panel">
@@ -202,7 +192,7 @@
     const s = document.createElement('i');
     const kind = i < 8 ? 'spark' : i < 18 ? 'gold' : '';
     s.className = 'star ' + kind;
-    s.style.cssText = `left:${rnd(2, 98)}%;top:${rnd(9, 98)}%;--s:${kind === 'spark' ? rnd(16, 24) : rnd(3, 5)}px;` +
+    s.style.cssText = `left:${rnd(2, 98)}%;top:${rnd(2, 98)}%;--s:${kind === 'spark' ? rnd(16, 24) : rnd(3, 5)}px;` +
                       `--t:${rnd(2.5, 6)}s;--d:${-rnd(0, 6)}s`;
     sky.appendChild(s);
   }
