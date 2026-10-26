@@ -25,6 +25,9 @@
       resetStats: 'Reset statistics for all games', resetStatsDone: 'Statistics have been reset',
       resetGames: 'Delete saved games', resetGamesDone: 'Saved games deleted',
       confirmTap: 'Tap again to confirm',
+      // Spelsidan
+      playSub: 'Choose a game', soon: 'Coming soon', allGames: '‹ All games',
+      klondike: 'Klondike', fortyThieves: 'Forty Thieves', scorpion: 'Scorpion',
       // Spider
       score: 'Score', moves: 'Moves', time: 'Time',
       menu: 'Menu', undo: 'Undo', deal: n => `Deal · ${n}`, hint: 'Hint', new: 'New',
@@ -36,6 +39,15 @@
       toastSuit: 'Suit complete! +100', toastNeedCards: 'Every column needs a card before you deal',
       toastNoMovesDeal: 'No moves – deal new cards', toastNoMoves: 'No more moves',
       toastHintsOff: 'Hints are turned off in Settings',
+      // Pyramid
+      pass: 'Pass', passes: n => n === 0 ? '∞ passes' : n === 1 ? '1 pass' : `${n} passes`, passesLabel: 'Passes through the stock',
+      variant: 'Variant', classic: 'Classic', hiddenRows: 'Hidden rows',
+      pyrHiddenRules: 'Every other row lies face down and turns over when nothing covers it any more.',
+      stock: 'Stock', waste: 'Waste', draw: n => `Draw · ${n}`, turn: 'Turn over',
+      pyrRules: 'Remove pairs that add up to 13. Kings go on their own. Clear the pyramid to win.',
+      pyrProgress: n => `${n} of 28 cleared`, pyrWin: 'The pyramid is cleared!',
+      lostTitle: 'No more moves', lostText: 'No pairs remain and the stock can no longer help.',
+      toastNoPairsDraw: 'No pairs – draw a card', toastNoPairsTurn: 'No pairs – turn over the stock',
     },
     sv: {
       on: 'På', off: 'Av', done: 'Klar', cancel: 'Avbryt',
@@ -57,6 +69,8 @@
       resetStats: 'Nollställ statistik för alla spel', resetStatsDone: 'Statistiken är nollställd',
       resetGames: 'Radera sparade spel', resetGamesDone: 'Sparade spel är raderade',
       confirmTap: 'Tryck igen för att bekräfta',
+      playSub: 'Välj patiens', soon: 'Kommer snart', allGames: '‹ Alla spel',
+      klondike: 'Harpan', fortyThieves: 'Fyrtio rövare', scorpion: 'Skorpionen',
       score: 'Poäng', moves: 'Drag', time: 'Tid',
       menu: 'Meny', undo: 'Ångra', deal: n => `Ge · ${n}`, hint: 'Tips', new: 'Ny',
       difficulty: 'Svårighetsgrad', tapMove: 'Tryck på kort för att flytta',
@@ -67,6 +81,14 @@
       toastSuit: 'Färg klar! +100', toastNeedCards: 'Alla kolumner måste ha kort innan du ger',
       toastNoMovesDeal: 'Inga drag – ge nya kort', toastNoMoves: 'Inga fler drag',
       toastHintsOff: 'Tips är avstängt i inställningarna',
+      pass: 'Varv', passes: n => n === 0 ? '∞ varv' : `${n} varv`, passesLabel: 'Varv genom talongen',
+      variant: 'Variant', classic: 'Klassisk', hiddenRows: 'Dolda rader',
+      pyrHiddenRules: 'Varannan rad ligger med baksidan upp och vänds när inget längre ligger på den.',
+      stock: 'Talong', waste: 'Kasthög', draw: n => `Dra · ${n}`, turn: 'Vänd',
+      pyrRules: 'Ta bort par som blir 13 tillsammans. Kungar tas bort ensamma. Töm pyramiden för att vinna.',
+      pyrProgress: n => `${n} av 28 borta`, pyrWin: 'Pyramiden är tömd!',
+      lostTitle: 'Inga fler drag', lostText: 'Inga par finns kvar och talongen kan inte hjälpa längre.',
+      toastNoPairsDraw: 'Inga par – dra ett kort', toastNoPairsTurn: 'Inga par – vänd talongen',
     },
   };
 

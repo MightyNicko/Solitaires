@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Solitaires">
+<meta name="theme-color" content="#10152e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Solitaires</title>
+<link rel="stylesheet" href="cards.css">
+<script src="i18n.js"></script>
+<script src="cards.js"></script>
+<script src="games.js"></script>
+<style>
+  :root { --gold:#f5d58a; --gold2:#c9a24a; --ink:#e9dfc4; --navy:#141a35; --u:min(1vw, calc(100vh / 75)); }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; overflow:hidden; overscroll-behavior:none; background:#0b0f22; }
+  body { color:var(--ink); font-family:-apple-system,"Segoe UI",system-ui,sans-serif; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; transition:opacity .25s; }
+  body.leaving { opacity:0; }
+  /* Samma bakgrund, stjärnor och ram som startsidan. Överkanten har samma färg som statusfältet (theme-color #10152e). */
+  #app { position:fixed; inset:0; overflow:hidden;
+         background:linear-gradient(180deg,#10152e 0,rgba(16,21,46,0) 90px), radial-gradient(circle at 50% 38%,#2a3566 0%,#141a35 50%,#0b0f22 100%); }
+  .stars { position:absolute; inset:0; pointer-events:none; }
+  .star { position:absolute; width:var(--s); height:var(--s); margin:calc(var(--s) / -2) 0 0 calc(var(--s) / -2); border-radius:50%;
+          background:#fff; box-shadow:0 0 calc(var(--s) * 2) rgba(255,255,255,.7); animation:twinkle var(--t) ease-in-out var(--d) infinite; }
+  .star.gold { background:var(--gold); box-shadow:0 0 calc(var(--s) * 2.5) rgba(245,213,138,.8); }
+  @keyframes twinkle { 0%,100% { opacity:.25; transform:scale(.7); } 50% { opacity:1; transform:scale(1); } }
+  .frame { position:absolute; pointer-events:none;
+           top:calc(env(safe-area-inset-top) + max(2.6 * var(--u), 12px)); bottom:calc(env(safe-area-inset-bottom) + max(2.6 * var(--u), 12px));
+           left:calc(env(safe-area-inset-left) + max(2.6 * var(--u), 12px)); right:calc(env(safe-area-inset-right) + max(2.6 * var(--u), 12px));
+           border:1px solid rgba(245,213,138,.5); border-radius:4px; }
+  .frame::before { content:""; position:absolute; inset:max(.8 * var(--u), 5px); border:1px solid rgba(245,213,138,.22); }
+  .corner { position:absolute; width:max(6 * var(--u), 34px); height:max(6 * var(--u), 34px); border:max(.3 * var(--u), 2px) solid var(--gold); }
+  .corner::after { content:"◆"; position:absolute; color:var(--gold); font-size:max(1.4 * var(--u), 9px); }
+  .c1 { top:-1px; left:-1px; border-right:0; border-bottom:0; } .c1::after { top:20%; left:20%; }
+  .c2 { top:-1px; right:-1px; border-left:0; border-bottom:0; } .c2::after { top:20%; right:20%; }
+  .c3 { bottom:-1px; left:-1px; border-right:0; border-top:0; } .c3::after { bottom:20%; left:20%; }
+  .c4 { bottom:-1px; right:-1px; border-left:0; border-top:0; } .c4::after { bottom:20%; right:20%; }
+
+  /* Rubrik och tillbaka */
+  .head { position:absolute; left:0; right:0; top:calc(env(safe-area-inset-top) + max(5 * var(--u), 36px)); text-align:center; pointer-events:none; }
+  .head h1 { margin:0; font:400 max(4.2 * var(--u), 28px)/1 Georgia,serif; color:var(--gold); letter-spacing:.4em; text-indent:.4em; text-transform:uppercase; }
+  .head .orn { margin-top:10px; color:var(--gold); font-size:11px; letter-spacing:.6em; text-indent:.6em; opacity:.7; }
+  .back { all:unset; position:absolute; z-index:2; top:calc(env(safe-area-inset-top) + max(5 * var(--u), 36px)); left:calc(env(safe-area-inset-left) + max(10 * var(--u), 70px));
+          padding:8px 16px; border:1px solid rgba(245,213,138,.35); border-radius:20px; font-size:15px; cursor:pointer; touch-action:manipulation; background:rgba(20,26,53,.5); }
+  .back:active { transform:scale(.96); }
+
+  /* Rutorna: storleken räknas fram i layout() så att 8 spel ryms som 2 × 4 i liggande läge */
+  .grid { position:absolute; left:0; right:0; display:grid; place-content:center; overflow:auto; -webkit-overflow-scrolling:touch; }
+  .tile { all:unset; position:relative; box-sizing:border-box; border-radius:18px; overflow:hidden; cursor:pointer; touch-action:manipulation;
+          background:linear-gradient(180deg,#1d2550,#141a35); border:1px solid rgba(245,213,138,.5);
+          box-shadow:0 0 0 5px rgba(20,26,53,.9), 0 0 0 6px rgba(245,213,138,.2), 0 18px 40px rgba(0,0,0,.5);
+          transition:transform .12s, filter .2s; animation:rise .6s cubic-bezier(.2,.8,.2,1) both; }
+  .tile:active { transform:scale(.97); }
+  .tile.soon { cursor:default; }
+  .tile .pic { position:absolute; left:0; right:0; top:0; overflow:hidden; background:radial-gradient(circle at 50% 40%,#2a3566,#141a35 75%); border-bottom:1px solid rgba(245,213,138,.3); }
+  .tile .txt { position:absolute; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:0 12px; text-align:center; }
+  .tile .nm { font:400 22px Georgia,serif; color:var(--gold); letter-spacing:.2em; text-indent:.2em; text-transform:uppercase; white-space:nowrap; }
+  .tile .sb { font-size:12.5px; opacity:.75; }
+  .tile .go { margin-top:4px; padding:5px 16px; border-radius:12px; font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase;
+              background:linear-gradient(180deg,var(--gold),var(--gold2)); color:#1b1b2e; }
+  .tile.soon .nm { opacity:.55; }
+  .tile.soon .mini { filter:grayscale(.85) brightness(.55); }
+  .rib { position:absolute; top:18px; right:-40px; transform:rotate(35deg); width:170px; text-align:center; padding:6px 0;
+         background:linear-gradient(180deg,var(--gold),var(--gold2)); color:#1b1b2e; font-size:10.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
+  @keyframes rise { from { opacity:0; transform:translateY(14px); } }
+
+  /* Miniatyrbilder av patienserna med valda kortutseenden */
+  .mini { position:absolute; left:0; top:0; }
+  .mini .card { position:absolute; width:var(--cw); height:calc(var(--cw) * 1.4); border-radius:calc(var(--cw) * .1); box-shadow:0 1px 3px rgba(0,0,0,.5); }
+  .mini .slot { position:absolute; width:var(--cw); height:calc(var(--cw) * 1.4); border-radius:calc(var(--cw) * .1); border:1px solid rgba(245,213,138,.35); }
+
+  @media (prefers-reduced-motion:reduce) { .star, .tile { animation:none; } }
+  body.calm .star { animation:none; }
+
+  /* iOS/iPadOS 27 suddar till överkanten i hemskärmsappar. Ett fast element överst (minst 90 % brett,
+     över 10 px högt) får WebKit att färga kanten i elementets bakgrundsfärg i stället. background-clip:text
+     gör att remsan själv inte ritar något. Färgen är densamma som theme-color och bakgrundens överkant. */
+  .remove-blur { display:none; }
+  @media (display-mode: standalone) {
+    .remove-blur { display:block; position:fixed; inset:0 0 auto; height:11px; z-index:2147483647; pointer-events:none;
+                   background:#10152e; -webkit-background-clip:text; background-clip:text; }
+  }
+</style>
+</head>
+<body>
+<div class="remove-blur" aria-hidden="true"></div>
+<div id="app">
+  <div class="stars"></div>
+  <div class="frame"><div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div></div>
+  <button class="back" id="back" data-i18n="home">‹ Home</button>
+  <div class="head" id="head"><h1 data-i18n="play">Play</h1><div class="orn">◆ ◆ ◆</div></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+(() => {
+  const t = I18N.t;
+  I18N.apply();
+  const $ = id => document.getElementById(id);
+  const store = { get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } } };
+  const global = store.get('solitaires.settings') || {};
+  const FACE = CardFaces.FACES.includes(global.face) ? global.face : 'standard';
+  const BACK = CardFaces.BACKS.includes(global.back) ? global.back : 'rings';
+  document.body.classList.toggle('calm', global.effects === false);
+
+  // Stjärnhimmel som på startsidan
+  const sky = document.querySelector('.stars'), rnd = (a, b) => a + Math.random() * (b - a);
+  for (let i = 0; i < 30; i++) {
+    const s = document.createElement('i');
+    s.className = 'star' + (i < 10 ? ' gold' : '');
+    s.style.cssText = `left:${rnd(2, 98)}%;top:${rnd(2, 98)}%;--s:${rnd(3, 5)}px;--t:${rnd(2.5, 6)}s;--d:${-rnd(0, 6)}s`;
+    sky.appendChild(s);
+  }
+
+  // ---------- Miniatyrbilder av varje patiens, ritade med appens kort ----------
+  // Samma "slumpade" kort varje gång (fast frö per spel), så bilderna inte byts vid varje besök
+  function seeded(seed) { let s = seed; return () => (s = (s * 9301 + 49297) % 233280) / 233280; }
+  function mini(id, w, h) {
+    const r = seeded(id.length * 97 + id.charCodeAt(0));
+    const rc = () => ({ s: Math.floor(r() * 4), r: 1 + Math.floor(r() * 13) });
+    const card = (x, y, c, z = 0) => c ? `<div class="card up" style="left:${x}px;top:${y}px;z-index:${z}">${CardFaces.html(c, FACE)}</div>`
+                                       : `<div class="card" style="left:${x}px;top:${y}px;z-index:${z}"></div>`;
+    const slot = (x, y) => `<div class="slot" style="left:${x}px;top:${y}px"></div>`;
+    let o = '', cw;
+    if (id === 'spider') {
+      cw = Math.min(w / 11.2, h / 3.8); const gap = (w - 10 * cw) / 11, y0 = (h - 3.4 * cw) / 2;
+      for (let c = 0; c < 10; c++) { const x = gap + c * (cw + gap), n = c < 4 ? 5 : 4, up = 1 + (c % 3);
+        for (let k = 0; k < n; k++) o += card(x, y0 + k * cw * .22, null, k);
+        for (let k = 0; k < up; k++) o += card(x, y0 + n * cw * .22 + k * cw * .42, rc(), 10 + k); }
+    } else if (id === 'pyramid') {
+      cw = Math.min(w / 8.4, h / 5.4); const g = cw * .08, step = cw * .62, y0 = (h - (cw * 1.4 + 6 * step)) / 2;
+      for (let row = 0; row < 7; row++) for (let k = 0; k <= row; k++) o += card(w / 2 - (row + 1) * (cw + g) / 2 + g / 2 + k * (cw + g), y0 + row * step, rc(), row);
+    } else if (id === 'freecell') {
+      cw = Math.min(w / 9.2, h / 5); const gap = (w - 8 * cw) / 9, y0 = (h - 4.57 * cw) / 2;
+      for (let f = 0; f < 8; f++) o += f === 1 ? card(gap + f * (cw + gap), y0, rc()) : slot(gap + f * (cw + gap), y0);
+      for (let c = 0; c < 8; c++) for (let k = 0; k < (c < 4 ? 5 : 4); k++) o += card(gap + c * (cw + gap), y0 + cw * 1.65 + k * cw * .38, rc(), k);
+    } else if (id === 'golf') {
+      cw = Math.min(w / 8.2, h / 4.4); const gap = (w - 7 * cw) / 8, y0 = (h - 4.2 * cw) / 2;
+      for (let c = 0; c < 7; c++) for (let k = 0; k < 5; k++) o += card(gap + c * (cw + gap), y0 + k * cw * .3, rc(), k);
+      o += card(w / 2 - cw * 1.2, y0 + 2.8 * cw, null) + card(w / 2 + cw * .2, y0 + 2.8 * cw, rc());
+    } else if (id === 'forty') {
+      cw = Math.min(w / 11.2, h / 3); const gap = (w - 10 * cw) / 11, y0 = (h - 2.54 * cw) / 2;
+      for (let c = 0; c < 10; c++) for (let k = 0; k < 4; k++) o += card(gap + c * (cw + gap), y0 + k * cw * .38, rc(), k);
+    } else {
+      // Harpan och dess släktingar: sju högar med baksidor under och en framsida överst, grundhögar ovanför
+      cw = Math.min(w / 8.2, h / 4.6); const gap = (w - 7 * cw) / 8, y0 = (h - 4.25 * cw) / 2;
+      for (let f = 0; f < 4; f++) o += slot(gap + (3 + f) * (cw + gap), y0);
+      o += card(gap, y0, null) + card(gap * 2 + cw, y0, rc());
+      for (let c = 0; c < 7; c++) { const x = gap + c * (cw + gap), y = y0 + cw * 1.65;
+        for (let k = 0; k < c; k++) o += card(x, y + k * cw * .2, null, k);
+        o += card(x, y + c * cw * .2, rc(), 10); }
+    }
+    return `<div class="mini face-${FACE} back-${BACK}" style="--cw:${cw}px;width:${w}px;height:${h}px">${o}</div>`;
+  }
+
+  // ---------- Rutnätet ----------
+  // Alltid hela rader: rutor som saknar spel fylls med "Kommer snart". Liggande 4 per rad, stående 2.
+  // Rutorna dimensioneras för minst två rader, så att det ryms 2 × 4 i liggande läge när det finns 8 spel.
+  const total = Math.max(4, Math.ceil(GAMES.length / 4) * 4);
+  const items = GAMES.concat(SOON.slice(0, total - GAMES.length).map(s => Object.assign({ soon: true }, s)));
+  function layout() {
+    const app = $('app'), W = app.clientWidth, H = app.clientHeight, land = W > H;
+    const cols = land ? 4 : 2, rows = total / cols;
+    const top = $('head').getBoundingClientRect().bottom + 24;
+    const fr = document.querySelector('.frame').getBoundingClientRect();
+    const bottom = fr.bottom - 30, side = Math.max(W * .06, 40) + fr.left;
+    const gap = Math.max(18, Math.min(30, W * .024));
+    const aw = W - 2 * side, ah = bottom - top, sizeRows = Math.max(rows, 2);
+    const tw = Math.floor(Math.min((aw - (cols - 1) * gap) / cols, (ah - (sizeRows - 1) * gap) / sizeRows / 1.2));
+    const th = Math.round(tw * 1.2), txt = Math.round(Math.min(118, th * .42)), ph = th - txt;
+    const grid = $('grid');
+    Object.assign(grid.style, { top: top + 'px', height: (bottom - top) + 'px', gridTemplateColumns: `repeat(${cols}, ${tw}px)`, gap: gap + 'px' });
+    grid.innerHTML = items.map((g, i) => {
+      const delay = `animation-delay:${i * 60}ms`;
+      if (g.soon) return `<div class="tile soon" style="width:${tw}px;height:${th}px;${delay}"><div class="pic" style="height:${ph}px">${mini(g.id, tw, ph)}</div>
+          <div class="txt" style="height:${txt}px"><div class="nm">${g.name}</div><div class="sb">${t('soon')}</div></div><div class="rib">${t('soon')}</div></div>`;
+      const saved = store.get(g.gameKey), st = saved && saved.st, going = st && !st.won && st.moves > 0;
+      const sub = going ? `${t('continue')} · ${g.sub(st)}` : g.sub(null, store.get(g.settingsKey) || {});
+      return `<button class="tile" data-url="${g.url}" style="width:${tw}px;height:${th}px;${delay}"><div class="pic" style="height:${ph}px">${mini(g.id, tw, ph)}</div>
+          <div class="txt" style="height:${txt}px"><div class="nm">${g.name}</div><div class="sb">${sub}</div><div class="go">${going ? t('continue') : t('play')}</div></div></button>`;
+    }).join('');
+  }
+  const go = url => { document.body.classList.add('leaving'); setTimeout(() => location.href = url, 220); };
+  $('grid').addEventListener('click', e => { const b = e.target.closest('.tile[data-url]'); if (b) go(b.dataset.url); });
+  $('back').onclick = () => go('./');
+
+  // Rita om vid vridning (iOS skickar inte alltid resize, se Spider) och när man kommer tillbaka till sidan
+  let size = '';
+  function relayout() {
+    const s = innerWidth + 'x' + innerHeight;
+    if (s === size) return;
+    size = s; layout();
+  }
+  window.addEventListener('resize', relayout);
+  window.addEventListener('orientationchange', () => setTimeout(relayout, 350));
+  window.addEventListener('pageshow', () => { document.body.classList.remove('leaving'); size = ''; relayout(); });
+  if (window.ResizeObserver) new ResizeObserver(relayout).observe($('app'));
+  relayout();
+
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>

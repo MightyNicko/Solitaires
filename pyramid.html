@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Solitaires">
+<meta name="theme-color" content="#10152e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Pyramid Solitaire</title>
+<link rel="stylesheet" href="cards.css">
+<script src="i18n.js"></script>
+<script src="cards.js"></script>
+<script src="sounds.js"></script>
+<style>
+  :root { --gold:#f5d58a; --gold2:#c9a24a; --ink:#e9dfc4; --glass:rgba(255,255,255,.08); --glassb:rgba(255,255,255,.14); }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:var(--app-h,100%); overflow:hidden; overscroll-behavior:none; background:#0b0f22; }
+  body { color:var(--ink); font-family:-apple-system,"Segoe UI",system-ui,sans-serif; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+  /* Spelplanen täcker hela skärmen. Överkanten har samma färg som statusfältet (theme-color #10152e). */
+  #board { position:fixed; top:0; left:0; right:0; height:var(--app-h,100%); touch-action:none;
+           background:linear-gradient(180deg,#10152e 0,rgba(16,21,46,0) 90px), radial-gradient(circle at 50% 40%,#2a3566 0%,#141a35 55%,#0b0f22 100%); }
+  #board.noanim .card { transition:none !important; }
+
+  /* HUD */
+  .ring { position:absolute; top:calc(env(safe-area-inset-top) + 10px); left:calc(env(safe-area-inset-left) + 14px); width:58px; height:58px; border-radius:50%; z-index:2000;
+          background:conic-gradient(var(--gold) calc(var(--p,0) * 1%), rgba(255,255,255,.12) 0); display:grid; place-items:center; transition:--p .4s; }
+  .ring span { width:46px; height:46px; border-radius:50%; background:#141a35; display:grid; place-items:center; font-weight:700; font-size:15px; color:var(--gold); }
+  /* Poängraden överst: rundad som förut, spelets namn mellan två gulddiamanter, siffrorna på var sin sida */
+  .hud { position:absolute; top:calc(env(safe-area-inset-top) + 12px); left:50%; transform:translateX(-50%); z-index:2000;
+         display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:22px; padding:9px 28px; border-radius:40px; white-space:nowrap;
+         font-size:12px; line-height:1; letter-spacing:.12em; text-transform:uppercase; color:var(--ink);
+         background:linear-gradient(180deg,#1d2550,#141a35); border:1px solid rgba(245,213,138,.55); }
+  .hud > * { display:flex; align-items:center; gap:22px; }
+  .hud .l { justify-content:flex-end; } .hud .r { justify-content:flex-start; }
+  .hud span { display:flex; align-items:center; }
+  .hud .ttl { gap:12px; color:var(--gold); }
+  .hud .ttl::before, .hud .ttl::after { content:"◆"; font-size:9px; letter-spacing:0; }
+  .hud .ttl span { font:400 21px/1 Georgia,serif; letter-spacing:.42em; margin-right:-.42em; padding-top:2px; }
+  .hud em { font-style:normal; opacity:.85; }
+  .hud b { color:var(--gold); font-size:16px; margin-left:6px; letter-spacing:0; font-variant-numeric:tabular-nums; }
+
+  /* Docka */
+  .dock { position:absolute; bottom:calc(env(safe-area-inset-bottom) + 12px); left:50%; transform:translateX(-50%); display:flex; gap:12px; padding:9px 14px; border-radius:28px;
+          background:rgba(20,26,53,.55); border:1px solid var(--glassb); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); z-index:2000; }
+  .dock button { all:unset; touch-action:manipulation; width:66px; height:56px; border-radius:18px; display:flex; flex-direction:column; align-items:center;
+                 justify-content:center; gap:3px; background:rgba(255,255,255,.06); color:var(--ink); cursor:pointer; font-size:10.5px;
+                 letter-spacing:.07em; text-transform:uppercase; transition:transform .1s, opacity .2s; }
+  .dock button svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .dock button:active { transform:scale(.94); }
+  .dock button.deal { width:92px; background:linear-gradient(180deg,var(--gold),var(--gold2)); color:#1b1b2e; font-weight:700; }
+  .dock button:disabled { opacity:.35; cursor:default; }
+  .dock button.off { opacity:.35; }   /* avstängd i inställningarna, men går att trycka på */
+  .dock button.pulse { animation:pulse 1s 2; }
+  @keyframes pulse { 50% { box-shadow:0 0 0 4px var(--gold), 0 0 24px var(--gold); } }
+
+  /* Kort */
+  .slot { position:absolute; width:var(--cw); height:var(--ch); border-radius:calc(var(--cw) * .09); border:1px solid rgba(245,213,138,.35); background:rgba(255,255,255,.03); }
+  .card { position:absolute; left:0; top:0; width:var(--cw); height:var(--ch); border-radius:calc(var(--cw) * .09); cursor:pointer;
+          transition:left var(--dur,.3s) cubic-bezier(.2,.8,.2,1), top var(--dur,.3s) cubic-bezier(.2,.8,.2,1), transform var(--dur,.3s) cubic-bezier(.2,.8,.2,1), opacity var(--dur,.3s);
+          box-shadow:0 3px 9px rgba(0,0,0,.45); }   /* fram- och baksidor: se cards.css */
+  .card.stock { opacity:0; pointer-events:none; }
+  .card.gone { opacity:0; transform:scale(.25); pointer-events:none; }
+  .card.dragging { transition:none; box-shadow:0 12px 26px rgba(0,0,0,.55); }
+  .card.hint, .slot.hint { box-shadow:0 0 0 3px var(--gold), 0 0 22px var(--gold); }
+  .card.target, .slot.target { box-shadow:0 0 0 3px rgba(245,213,138,.85), 0 0 14px rgba(245,213,138,.6); }
+  .card.shake { animation:shake .32s; }
+  @keyframes shake { 25% { translate:-5px 0; } 50% { translate:5px 0; } 75% { translate:-3px 0; } }
+
+  /* Toast & dialoger */
+  .toast { position:fixed; left:50%; bottom:calc(104px + env(safe-area-inset-bottom)); transform:translate(-50%,20px); opacity:0; transition:.25s;
+           background:rgba(20,26,53,.92); border:1px solid var(--glassb); padding:10px 18px; border-radius:20px; font-size:15px; z-index:5000; pointer-events:none; white-space:nowrap; }
+  .toast.show { opacity:1; transform:translate(-50%,0); }
+  .overlay { position:fixed; top:0; left:0; right:0; height:var(--app-h,100%); background:rgba(5,8,20,.6); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); display:none; place-items:center; z-index:6000; padding:16px; }
+  .overlay.open { display:grid; }
+  .panel { width:min(420px,100%); background:linear-gradient(180deg,#1d2550,#141a35); border:1px solid rgba(245,213,138,.35); border-radius:24px;
+           padding:26px; text-align:center; box-shadow:0 30px 80px rgba(0,0,0,.6); }
+  .panel h2 { margin:0 0 6px; color:var(--gold); font-family:Georgia,serif; font-size:28px; font-weight:400; }
+  .panel p { margin:0 0 18px; opacity:.8; line-height:1.4; }
+  .btn { all:unset; display:block; box-sizing:border-box; width:100%; touch-action:manipulation; padding:14px; border-radius:14px; background:rgba(255,255,255,.08); margin-top:10px; cursor:pointer; font-size:16px; text-align:center; }
+  .btn.gold { background:linear-gradient(180deg,var(--gold),var(--gold2)); color:#1b1b2e; font-weight:700; }
+  .seg { display:flex; background:rgba(255,255,255,.06); border-radius:14px; padding:4px; margin:0 0 6px; }
+  .seg .btn { flex:1; margin:0; padding:10px 6px; font-size:14px; background:transparent; }
+  .seg .btn.on { background:var(--gold); color:#1b1b2e; font-weight:700; }
+  .statgrid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:16px 0 6px; font-size:12px; opacity:.85; }
+  .statgrid b { display:block; color:var(--gold); font-size:22px; font-family:Georgia,serif; font-weight:400; }
+  .row { display:flex; gap:10px; } .row .btn { flex:1; }
+  .label { font-size:12px; letter-spacing:.08em; text-transform:uppercase; opacity:.7; margin:4px 0 8px; }
+  .btn small { display:block; font-size:12px; font-weight:400; opacity:.75; margin-top:3px; }
+  .btn.link { background:transparent; font-size:14px; opacity:.8; }
+
+  /* Pyramids startskärm: inställningar och Spela */
+  .lobby .panel { width:min(440px,100%); max-height:calc(var(--app-h,100vh) - 32px); overflow:auto; -webkit-overflow-scrolling:touch;
+                  border-radius:6px; border-color:rgba(245,213,138,.5);
+                  box-shadow:0 0 0 6px rgba(20,26,53,.9), 0 0 0 7px rgba(245,213,138,.25), 0 30px 80px rgba(0,0,0,.6); }
+  .lobby .medal { width:72px; height:72px; margin:0 auto 12px; border-radius:50%; display:grid; place-items:center; font-size:40px; color:var(--gold);
+                  background:radial-gradient(circle at 40% 30%,#2e3a75,#141a35 70%); border:3px solid var(--gold);
+                  box-shadow:0 0 0 5px rgba(245,213,138,.15), 0 0 26px rgba(245,213,138,.35); }
+  .lobby h2 { margin:0; font-size:26px; letter-spacing:.24em; text-indent:.24em; text-transform:uppercase; }
+  .lobby .orn { color:var(--gold); font-size:11px; letter-spacing:.5em; text-indent:.5em; text-transform:uppercase; opacity:.7; margin:6px 0 10px; }
+  .lobby .label { margin-top:16px; }
+  .lobby .statgrid { margin-bottom:16px; }
+
+  @media (max-width:640px) {
+    .ring { width:46px; height:46px; top:calc(env(safe-area-inset-top) + 8px); left:8px; } .ring span { width:36px; height:36px; font-size:12px; }
+    .hud { gap:10px; padding:7px 18px; font-size:9px; top:calc(env(safe-area-inset-top) + 12px); } .hud > * { gap:10px; } .hud .ttl { gap:8px; } .hud .ttl span { font-size:15px; letter-spacing:.3em; margin-right:-.3em; } .hud b { font-size:13px; margin-left:4px; }
+    .dock { gap:6px; padding:7px 9px; bottom:calc(env(safe-area-inset-bottom) + 10px); } .dock button { width:52px; height:50px; font-size:9px; } .dock button.deal { width:70px; }
+  }
+
+  /* iOS/iPadOS 27 suddar till överkanten i hemskärmsappar. Ett fast element överst (minst 90 % brett,
+     över 10 px högt) får WebKit att färga kanten i elementets bakgrundsfärg i stället. background-clip:text
+     gör att remsan själv inte ritar något. Färgen är densamma som theme-color och bakgrundens överkant. */
+  .remove-blur { display:none; }
+  @media (display-mode: standalone) {
+    .remove-blur { display:block; position:fixed; inset:0 0 auto; height:11px; z-index:2147483647; pointer-events:none;
+                   background:#10152e; -webkit-background-clip:text; background-clip:text; }
+  }
+  /* Pyramid: täckta kort tonas ned, valt kort lyser, talong och kasthög har etiketter */
+  .card.dim { filter:brightness(.62) saturate(.8); }
+  .card.sel { box-shadow:0 0 0 3px var(--gold), 0 0 24px var(--gold); }
+  .card.match { box-shadow:0 0 0 2px rgba(245,213,138,.7), 0 0 12px rgba(245,213,138,.45); }
+  .slot.stock { display:grid; place-items:center; color:var(--gold); font-size:calc(var(--cw) * .4); cursor:pointer; }
+  .slot.stock.empty { opacity:.35; cursor:default; }
+  .badge { position:absolute; min-width:26px; height:26px; padding:0 7px; border-radius:13px; background:var(--gold); color:#1b1b2e; font-weight:800; font-size:13px;
+           display:grid; place-items:center; box-shadow:0 2px 6px rgba(0,0,0,.4); z-index:1500; pointer-events:none; }
+  .plabel { position:absolute; font-size:11px; letter-spacing:.16em; text-transform:uppercase; opacity:.6; text-align:center; pointer-events:none; }
+  .lobby .rules { font-size:13px; margin:2px 0 0; }
+</style>
+</head>
+<body>
+<div class="remove-blur" aria-hidden="true"></div>
+<div id="board">
+  <div class="ring" id="ring"><span id="cleared">0/28</span></div>
+  <div class="hud"><div class="l"><span><em data-i18n="score">Score</em><b id="score">0</b></span><span><em data-i18n="moves">Moves</em><b id="moves">0</b></span></div><div class="ttl"><span>Pyramid</span></div><div class="r"><span><em data-i18n="time">Time</em><b id="time">0:00</b></span><span><em data-i18n="pass">Pass</em><b id="pass">1/3</b></span></div></div>
+  <div class="slot stock" id="stock-slot"></div>
+  <div class="slot" id="waste-slot"></div>
+  <div class="badge" id="stock-n"></div>
+  <div class="plabel" id="stock-lbl" data-i18n="stock">Stock</div>
+  <div class="plabel" id="waste-lbl" data-i18n="waste">Waste</div>
+  <div class="dock">
+    <button id="b-menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span data-i18n="menu">Menu</span></button>
+    <button id="b-undo"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span data-i18n="undo">Undo</span></button>
+    <button id="b-draw" class="deal"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="11" height="15" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v13"/></svg><span id="draw-lbl">Draw</span></button>
+    <button id="b-hint"><svg viewBox="0 0 24 24"><path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z"/></svg><span data-i18n="hint">Hint</span></button>
+    <button id="b-new"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span data-i18n="new">New</span></button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<div class="overlay lobby" id="lobby"><div class="panel">
+  <div class="medal">▲&#xFE0E;</div>
+  <h2>Pyramid</h2>
+  <div class="orn">◆ Solitaire ◆</div>
+  <p class="rules" id="rules"></p>
+  <div class="label" data-i18n="variant">Variant</div>
+  <div class="seg" data-key="variant"><button class="btn" data-v="classic" data-i18n="classic">Classic</button><button class="btn" data-v="hidden" data-i18n="hiddenRows">Hidden rows</button></div>
+  <div class="label" data-i18n="passesLabel">Passes through the stock</div>
+  <div class="seg" data-key="passes"><button class="btn" data-v="1"></button><button class="btn" data-v="2"></button><button class="btn" data-v="0"></button></div>
+  <div class="statgrid"><div><b id="st-played">0</b><span data-i18n="played">Played</span></div><div><b id="st-won">0</b><span data-i18n="won">Won</span></div><div><b id="st-best">–</b><span data-i18n="bestScore">Best score</span></div></div>
+  <button class="btn gold" id="l-resume"></button>
+  <button class="btn gold" id="l-play"></button>
+  <button class="btn link" id="l-home" data-i18n="allGames">‹ All games</button>
+</div></div>
+
+<div class="overlay" id="confirm"><div class="panel">
+  <h2 data-i18n="confirmTitle">New game?</h2>
+  <p data-i18n="confirmText">The current game will end.</p>
+  <div class="row"><button class="btn" id="c-no" data-i18n="cancel">Cancel</button><button class="btn gold" id="c-yes" data-i18n="newGame">New game</button></div>
+</div></div>
+
+<div class="overlay" id="win"><div class="panel">
+  <h2 data-i18n="winTitle">Congratulations!</h2>
+  <p><span data-i18n="pyrWin">The pyramid is cleared!</span><br><span id="win-text"></span></p>
+  <button class="btn gold" id="w-new" data-i18n="playAgain">Play again</button>
+</div></div>
+
+<div class="overlay" id="lost"><div class="panel">
+  <h2 data-i18n="lostTitle">No more moves</h2>
+  <p><span data-i18n="lostText">No pairs remain and the stock can no longer help.</span><br><span id="lost-text"></span></p>
+  <div class="row"><button class="btn" id="lo-undo" data-i18n="undo">Undo</button><button class="btn gold" id="lo-new" data-i18n="newGame">New game</button></div>
+</div></div>
+
+<script>
+(() => {
+  const t = I18N.t;
+  I18N.apply();
+  const $ = id => document.getElementById(id);
+  const board = $('board');
+
+  let st = null, hist = [], els = [], M = null, drag = null, sel = -1;
+  let hintIdx = 0, hintTimer = 0, paused = false;
+
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  };
+  // Statistiken sparas per nivå i samma form som Spiders. Nivån är variant och antal varv genom talongen
+  // (0 = obegränsat), t.ex. "2" för klassisk med 2 varv och "h0" för dolda rader med obegränsat antal varv.
+  const level = (variant, passes) => (variant === 'hidden' ? 'h' : '') + passes;
+  const LEVELS = ['classic', 'hidden'].flatMap(v => [1, 2, 0].map(n => level(v, n)));
+  function loadStats() {
+    const s = store.get('pyramid.stats') || {};
+    for (const k of LEVELS) s[k] = s[k] || { played:0, won:0, best:0, fast:0 };
+    return s;
+  }
+  const saveStats = s => store.set('pyramid.stats', s);
+  const save = () => st && store.set('pyramid.game', { st, hist: hist.slice(-300) });
+
+  // Animationer, tips, ljud och kortens utseende är övergripande inställningar (startsidan). Antal varv är Pyramids eget.
+  const global = store.get('solitaires.settings') || {};
+  const SKEY = 'pyramid.settings';
+  const settings = Object.assign({ passes: 0, variant: 'classic' }, store.get(SKEY) || {});
+  const SPEED = { normal: 1, fast: .5, off: 0 }[global.anim] ?? 1;
+  const HINTS = global.hints !== false;
+  const FACE = CardFaces.FACES.includes(global.face) ? global.face : 'standard';
+  const BACK = CardFaces.BACKS.includes(global.back) ? global.back : 'rings';
+  board.classList.add('face-' + FACE, 'back-' + BACK);
+  board.style.setProperty('--dur', (.3 * SPEED) + 's');
+  CardSounds.init(global.sound);
+
+  // ---------- Regler ----------
+  // Pyramiden har 28 platser, rad för rad (rad 0 är toppen). En plats är null när kortet är borttaget.
+  // Ett kort är täckt av de två korten snett under sig. Par som blir 13 tas bort, kungar (13) tas bort ensamma.
+  const idx = (row, k) => row * (row + 1) / 2 + k;
+  const ROW = [...Array(28)].map((_, i) => { const r = Math.floor((Math.sqrt(8 * i + 1) - 1) / 2); return [r, i - idx(r, 0)]; });
+  const rank = id => st.deck[id].r;
+  const top = () => st.waste.length ? st.waste[st.waste.length - 1] : -1;
+  // Kan kortet tas? Översta kortet i kasthögen går alltid. Ett pyramidkort går om det ligger med framsidan upp och
+  // inget ligger på det, eller om det enda som ligger på det är partnern (då försvinner båda samtidigt).
+  const down = i => !!(st.down && st.down[i]);
+  const covers = i => { const [r, k] = ROW[i]; return r === 6 ? [] : [st.pyr[idx(r + 1, k)], st.pyr[idx(r + 1, k + 1)]]; };
+  function takeable(id, partner = -1) {
+    if (id === top()) return true;
+    const i = st.pyr.indexOf(id);
+    return i >= 0 && !down(i) && covers(i).every(c => c === null || c === partner);
+  }
+  // Dolda rader: ett kort med baksidan upp vänds när inget längre ligger på det
+  function reveal() {
+    if (st.down) st.pyr.forEach((id, i) => { if (id !== null && st.down[i] && covers(i).every(c => c === null)) st.down[i] = false; });
+  }
+  const pairOk = (a, b) => a !== b && rank(a) + rank(b) === 13 && takeable(a, b) && takeable(b, a);
+  const cleared = () => st.pyr.filter(x => x === null).length;
+  const canTurn = () => !st.stock.length && st.waste.length > 0 && (st.passes === 0 || st.pass < st.passes);
+  // Alla möjliga drag: kungar och par. Drag som tar bort pyramidkort kommer först.
+  function findMoves() {
+    const ids = st.pyr.filter((x, i) => x !== null && !down(i)).concat(top() >= 0 ? [top()] : []), res = [];
+    ids.forEach(a => { if (rank(a) === 13 && takeable(a)) res.push([a]); });
+    for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) if (pairOk(ids[i], ids[j])) res.push([ids[i], ids[j]]);
+    const onPyr = m => m.filter(id => st.pyr.includes(id)).length;
+    return res.sort((a, b) => onPyr(b) - onPyr(a));
+  }
+
+  // ---------- Spelflöde ----------
+  function newGame() {
+    const { passes, variant } = settings;
+    const stats = loadStats(); stats[level(variant, passes)].played++; saveStats(stats);
+    const deck = [];
+    for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) deck.push({ s, r });
+    const ids = deck.map((_, i) => i);
+    for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+    // Dolda rader: rad 6 (nederst), 4, 2 och 0 ligger med framsidan upp, rad 5, 3 och 1 med baksidan upp
+    const pyrDown = ROW.map(([r]) => variant === 'hidden' && r % 2 === 1);
+    st = { deck, pyr: ids.splice(0, 28), down: pyrDown, stock: ids, waste: [], gone: [], score: 0, moves: 0, time: 0, pass: 1, passes, variant, won: false };
+    hist = []; sel = -1; clearHint(); buildCards();
+    instant(() => els.forEach(e => { e.style.left = M.sx + 'px'; e.style.top = M.sy + 'px'; e.className = 'card'; }));
+    const delay = {};
+    st.pyr.forEach((id, i) => delay[id] = i * 30);
+    render({ delay }); save();
+  }
+  function snapshot() { return JSON.stringify({ pyr: st.pyr, down: st.down, stock: st.stock, waste: st.waste, gone: st.gone, score: st.score, pass: st.pass }); }
+  function pushHist() { hist.push(snapshot()); if (hist.length > 500) hist.shift(); }
+  function after(anim) {
+    reveal(); clearHint(); render(anim); save();
+    if (cleared() === 28 && !st.won) win();
+    else if (stuck()) setTimeout(() => {
+      if (!st || st.won || !stuck()) return;
+      $('lost-text').textContent = t('winStats', { score: st.score, moves: st.moves, time: fmt(st.time) });
+      open('lost');
+    }, 700);
+  }
+  // Inga drag kvar: inget par nu, och talongen är slut. Med obegränsade varv räcker det att inget kort i talongen
+  // eller kasthögen någonsin kan paras med ett fritt pyramidkort (annars vänder man runt i all evighet).
+  function stuck() {
+    if (st.won || findMoves().length) return false;
+    if (!st.stock.length && !canTurn()) return true;
+    if (st.passes !== 0) return false;
+    const free = st.pyr.filter(id => id !== null && takeable(id));
+    return !st.stock.concat(st.waste).some(c => rank(c) === 13 || free.some(p => rank(p) + rank(c) === 13));
+  }
+  // Tar bort ett par (eller en kung). Pyramidkort ger 10 poäng, kort från kasthögen 5, tom pyramid 250 extra.
+  function remove(ids) {
+    pushHist();
+    const delay = {};
+    ids.forEach((id, k) => {
+      const i = st.pyr.indexOf(id);
+      if (i >= 0) { st.pyr[i] = null; st.score += 10; } else { st.waste.pop(); st.score += 5; }
+      st.gone.push(id); delay[id] = k * 60;
+    });
+    if (cleared() === 28) st.score += 250;
+    st.moves++; sel = -1;
+    after({ delay });
+  }
+  // Dra ett kort från talongen, eller vänd kasthögen till en ny talong om det finns varv kvar
+  function draw() {
+    if (!st || st.won) return;
+    if (st.stock.length) { pushHist(); st.waste.push(st.stock.pop()); }
+    else if (canTurn()) { pushHist(); st.stock = st.waste.reverse(); st.waste = []; st.pass++; }
+    else return;
+    st.moves++; sel = -1;
+    after({ vol: .6 });
+  }
+  function undo() {
+    if (!hist.length || st.won) return;
+    const moves = st.moves;
+    Object.assign(st, JSON.parse(hist.pop()));
+    st.moves = moves + 1; sel = -1;
+    after({ vol: MOVE_VOL });
+  }
+  function win() {
+    st.won = true; save(); updateHud();
+    const stats = loadStats(), s = stats[level(st.variant, st.passes)];
+    s.won++; if (st.score > s.best) s.best = st.score;
+    if (!s.fast || st.time < s.fast) s.fast = st.time;   // snabbaste vinst i sekunder
+    saveStats(stats);
+    setTimeout(() => { $('win-text').textContent = t('winStats', { score: st.score, moves: st.moves, time: fmt(st.time) }); open('win'); }, 900);
+  }
+  // Tryck på ett kort: kungar försvinner direkt, annars väljs kortet eller paras med det valda
+  function tap(id) {
+    if (rank(id) === 13 && takeable(id)) { remove([id]); return; }
+    if (sel >= 0 && sel !== id && pairOk(sel, id)) { remove([sel, id]); return; }
+    sel = sel === id || !takeable(id) ? -1 : id;
+    render();
+  }
+
+  // ---------- Tips ----------
+  function hint() {
+    if (!HINTS) { toast(t('toastHintsOff')); return; }
+    if (!st || st.won) return;
+    clearHintMarks();
+    const moves = findMoves();
+    if (!moves.length) {
+      if (st.stock.length || canTurn()) {
+        const b = $('b-draw'); b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse');
+        toast(t(st.stock.length ? 'toastNoPairsDraw' : 'toastNoPairsTurn'));
+      } else toast(t('toastNoMoves'));
+      return;
+    }
+    moves[hintIdx++ % moves.length].forEach(id => els[id].classList.add('hint'));
+    hintTimer = setTimeout(clearHintMarks, 1600);
+  }
+  function clearHintMarks() { clearTimeout(hintTimer); board.querySelectorAll('.hint').forEach(e => e.classList.remove('hint')); }
+  function clearHint() { hintIdx = 0; clearHintMarks(); }
+
+  // ---------- Layout & rendering ----------
+  function instant(fn) { board.classList.add('noanim'); fn(); void board.offsetWidth; board.classList.remove('noanim'); }
+  function buildCards() {
+    els.forEach(e => e.remove());
+    els = st.deck.map((c, id) => {
+      const e = document.createElement('div');
+      e.className = 'card'; e.dataset.id = id;
+      e.innerHTML = CardFaces.html(c, FACE);
+      board.appendChild(e);
+      return e;
+    });
+  }
+  const put = (e, x, y) => { e.style.left = x + 'px'; e.style.top = y + 'px'; };
+  function layout() {
+    const W = board.clientWidth, H = board.clientHeight, br = board.getBoundingClientRect();
+    // Korten får ytan mellan banderollen och dockan
+    const T = document.querySelector('.hud').getBoundingClientRect().bottom - br.top + 16;
+    const B = document.querySelector('.dock').getBoundingClientRect().top - br.top - 16;
+    const land = W > H, LBL = 24;   // LBL: plats för etiketten under talong och kasthög
+    // Liggande: talongen till vänster och kasthögen till höger om pyramiden. Stående: båda under.
+    let cw = land ? Math.min((B - T - LBL) / (1.4 * 4), (W - 120) / (7 * 1.08 + 2 * 1.4))
+                  : Math.min((W - 40) / 7.6, (B - T - 40 - LBL) / (1.4 * 5));
+    cw = Math.min(cw, 140);
+    const ch = cw * 1.4, step = ch * .5, gap = cw * .08, pyrW = 7 * cw + 6 * gap, pyrH = ch + 6 * step;
+    let ptop, sx, sy, wx, wy;
+    if (land) {
+      ptop = T + (B - T - LBL - pyrH) / 2;
+      const side = (W - pyrW) / 2;
+      sx = side / 2 - cw / 2; wx = W - side / 2 - cw / 2; sy = wy = ptop + pyrH / 2 - ch / 2;
+    } else {
+      ptop = T + (B - T - (pyrH + 40 + ch + LBL)) / 2;
+      sy = wy = ptop + pyrH + 40; sx = W / 2 - cw - 16; wx = W / 2 + 16;
+    }
+    const pos = ROW.map(([r, k]) => [W / 2 - (r + 1) * (cw + gap) / 2 + gap / 2 + k * (cw + gap), ptop + r * step]);
+    const rr = $('ring').getBoundingClientRect();
+    M = { W, H, cw, ch, pos, sx, sy, wx, wy,
+          rx: rr.left - br.left + rr.width / 2 - cw / 2, ry: rr.top - br.top + rr.height / 2 - ch / 2 };
+    board.style.setProperty('--cw', cw + 'px');
+    board.style.setProperty('--ch', ch + 'px');
+    put($('stock-slot'), sx, sy); put($('waste-slot'), wx, wy);
+    [['stock-lbl', sx], ['waste-lbl', wx]].forEach(([id, x]) => { put($(id), x, sy + ch + 8); $(id).style.width = cw + 'px'; });
+    put($('stock-n'), sx + cw - 16, sy - 10);
+  }
+  const MOVE_VOL = .4;   // spelarens egna flyttar (och ångra) låter svagare än utdelningen
+  function render(anim = {}) {
+    const delay = anim.delay || {};
+    const quiet = board.classList.contains('noanim');
+    const set = (id, x, y, z, cls) => {
+      const e = els[id];
+      // Ett kort som flyttas låter när det landar: efter sin fördröjning och ca 60 % av rörelsen
+      if (!quiet && (Math.abs(parseFloat(e.style.left) - x) > 8 || Math.abs(parseFloat(e.style.top) - y) > 8))
+        CardSounds.place(((delay[id] || 0) + 180) * SPEED, (cls.includes('gone') ? .6 : 1) * (anim.vol ?? 1));
+      put(e, x, y); e.style.zIndex = z;
+      e.className = cls; e.style.transform = ''; e.style.transitionDelay = (delay[id] || 0) * SPEED + 'ms';
+    };
+    const mark = id => (id === sel ? ' sel' : '') + (HINTS && sel >= 0 && id !== sel && pairOk(sel, id) ? ' match' : '');
+    st.stock.forEach((id, j) => set(id, M.sx, M.sy, 10 + j, 'card'));
+    st.waste.forEach((id, j) => set(id, M.wx, M.wy, 100 + j, 'card up' + mark(id)));
+    st.gone.forEach((id, j) => set(id, M.rx, M.ry, 3000 + j, 'card up gone'));
+    st.pyr.forEach((id, i) => { if (id !== null) set(id, M.pos[i][0], M.pos[i][1], 200 + i, down(i) ? 'card' : 'card up' + (takeable(id) ? '' : ' dim') + mark(id)); });
+    updateHud();
+  }
+  const fmt = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  function updateHud() {
+    $('score').textContent = st.score;
+    $('moves').textContent = st.moves;
+    $('time').textContent = fmt(st.time);
+    $('pass').textContent = st.pass + '/' + (st.passes || '∞');
+    const c = cleared();
+    $('cleared').textContent = c + '/28';
+    $('ring').style.setProperty('--p', c / 28 * 100);
+    const turn = canTurn();
+    $('stock-n').textContent = st.stock.length;
+    $('stock-n').style.display = st.stock.length ? '' : 'none';
+    $('stock-slot').textContent = turn ? '↻' : '';
+    $('stock-slot').classList.toggle('empty', !st.stock.length && !turn);
+    $('draw-lbl').textContent = st.stock.length ? t('draw', st.stock.length) : t('turn');
+    $('b-draw').disabled = st.won || (!st.stock.length && !turn);
+    $('b-undo').disabled = !hist.length || st.won;
+  }
+  let toastTimer = 0;
+  function toast(msg) {
+    const el = $('toast');
+    el.textContent = msg; el.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+  }
+  function shake(list) {
+    list.forEach(el => { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); });
+    setTimeout(() => list.forEach(el => el.classList.remove('shake')), 350);
+  }
+
+  // ---------- Touch / mus ----------
+  // Tryck på två kort som blir 13, eller dra det ena kortet till det andra. Tryck på talongen för att dra ett kort.
+  const clearTarget = () => board.querySelectorAll('.target').forEach(e => e.classList.remove('target'));
+  function dropTarget(e, g) {
+    for (const n of document.elementsFromPoint(e.clientX, e.clientY)) {
+      const c = n.closest && n.closest('.card');
+      if (c && +c.dataset.id !== g.id && pairOk(g.id, +c.dataset.id)) return +c.dataset.id;
+    }
+    return -1;
+  }
+  board.addEventListener('pointerdown', e => {
+    if (drag || !st || st.won) return;
+    if (relayout()) return;   // skärmen har vridits utan att vi märkt det: rätta layouten först
+    const el = e.target.closest('.card');
+    if (e.target.closest('#stock-slot') || (el && st.stock.includes(+el.dataset.id))) { draw(); return; }
+    if (!el) { if (sel >= 0) { sel = -1; render(); } return; }
+    const id = +el.dataset.id;
+    if (st.gone.includes(id)) return;
+    if (!takeable(id) && !(sel >= 0 && pairOk(sel, id))) { shake([el]); return; }
+    drag = { id, el, pid: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, moving: false };
+  });
+  window.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.pid) return;
+    drag.dx = e.clientX - drag.x0; drag.dy = e.clientY - drag.y0;
+    if (!drag.moving && (Math.hypot(drag.dx, drag.dy) < 8 || !takeable(drag.id))) return;
+    if (!drag.moving) { drag.moving = true; drag.el.classList.add('dragging'); drag.el.style.zIndex = 5000; clearHintMarks(); }
+    drag.el.style.transform = `translate(${drag.dx}px,${drag.dy}px)`;
+    clearTarget();
+    const tg = dropTarget(e, drag);
+    if (tg >= 0) els[tg].classList.add('target');
+  });
+  function endDrag(e, cancel) {
+    if (!drag || e.pointerId !== drag.pid) return;
+    const g = drag; drag = null; clearTarget();
+    if (g.moving) {
+      const tg = cancel ? -1 : dropTarget(e, g);
+      // Flytta in fingrets förskjutning i left/top innan animationen, så att den startar där kortet släpptes (som i Spider)
+      g.el.style.left = parseFloat(g.el.style.left) + g.dx + 'px';
+      g.el.style.top = parseFloat(g.el.style.top) + g.dy + 'px';
+      g.el.style.transform = '';
+      void board.offsetWidth;
+      if (tg >= 0) remove([g.id, tg]); else render({ vol: MOVE_VOL });
+    } else if (!cancel) tap(g.id);
+    setTimeout(relayout, 400);   // om skärmen vreds under draget
+  }
+  window.addEventListener('pointerup', e => endDrag(e, false));
+  window.addEventListener('pointercancel', e => endDrag(e, true));
+
+  // ---------- Knappar & dialoger ----------
+  function open(id) { paused = true; $(id).classList.add('open'); }
+  function close(id) { $(id).classList.remove('open'); paused = !!document.querySelector('.overlay.open'); }
+  document.querySelectorAll('#lobby [data-key=passes] .btn').forEach(b => b.textContent = t('passes', +b.dataset.v));
+  const levelName = (variant, passes) => (variant === 'hidden' ? t('hiddenRows') + ' · ' : '') + t('passes', passes);
+  const inProgress = () => st && !st.won && st.moves > 0;
+  function refreshLobby() {
+    document.querySelectorAll('#lobby .seg').forEach(seg => {
+      const v = String(settings[seg.dataset.key]);
+      seg.querySelectorAll('.btn').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+    });
+    $('rules').textContent = t('pyrRules') + (settings.variant === 'hidden' ? ' ' + t('pyrHiddenRules') : '');
+    const s = loadStats()[level(settings.variant, settings.passes)];
+    $('st-played').textContent = s.played; $('st-won').textContent = s.won; $('st-best').textContent = s.best || '–';
+    const going = inProgress();
+    $('l-resume').style.display = going ? '' : 'none';
+    if (going) $('l-resume').innerHTML = `${t('resume')}<small>${levelName(st.variant, st.passes)} · ${t('pyrProgress', cleared())}</small>`;
+    $('l-play').className = going ? 'btn' : 'btn gold';
+    $('l-play').innerHTML = `${going ? t('newGame') : t('play')}<small>${levelName(settings.variant, settings.passes)}</small>`;
+  }
+  function showLobby() { refreshLobby(); open('lobby'); }
+  document.querySelectorAll('#lobby .seg').forEach(seg => seg.addEventListener('click', e => {
+    const b = e.target.closest('.btn');
+    if (!b) return;
+    settings[seg.dataset.key] = seg.dataset.key === 'passes' ? +b.dataset.v : b.dataset.v;
+    store.set(SKEY, settings);
+    refreshLobby();
+  }));
+  $('b-draw').onclick = draw;
+  $('b-undo').onclick = undo;
+  $('b-hint').onclick = hint;
+  if (!HINTS) $('b-hint').classList.add('off');
+  $('b-menu').onclick = showLobby;
+  $('b-new').onclick = () => { if (inProgress()) open('confirm'); else newGame(); };
+  $('l-resume').onclick = () => close('lobby');
+  $('l-play').onclick = () => { if (inProgress()) open('confirm'); else { close('lobby'); newGame(); } };
+  $('l-home').onclick = () => { save(); location.href = 'games.html'; };
+  $('c-no').onclick = () => close('confirm');
+  $('c-yes').onclick = () => { close('confirm'); close('lobby'); newGame(); };
+  $('w-new').onclick = () => { close('win'); newGame(); };
+  $('lo-undo').onclick = () => { close('lost'); undo(); };
+  $('lo-new').onclick = () => { close('lost'); newGame(); };
+  document.addEventListener('keydown', e => {
+    if (paused) return;
+    if (e.key === 'z' || e.key === 'Z') undo();
+    else if (e.key === 'd' || e.key === ' ') { e.preventDefault(); draw(); }
+    else if (e.key === 'h') hint();
+  });
+
+  setInterval(() => {
+    if (!st || st.won || paused || document.hidden || st.moves === 0) return;
+    st.time++;
+    $('time').textContent = fmt(st.time);
+    if (st.time % 5 === 0) save();
+  }, 1000);
+  window.addEventListener('pagehide', save);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+  // Räkna om layouten när skärmen ändrar storlek. iOS skickar inte alltid resize vid vridning
+  // (t.ex. om iPaden vreds medan appen låg i bakgrunden), så vi lyssnar på flera håll.
+  function relayout() {
+    if (drag || !M || (M.W === board.clientWidth && M.H === board.clientHeight)) return false;
+    layout(); if (st) instant(() => render());
+    return true;
+  }
+  const relayoutSoon = () => { relayout(); requestAnimationFrame(relayout); setTimeout(relayout, 350); };
+  window.addEventListener('resize', relayoutSoon);
+  window.addEventListener('orientationchange', relayoutSoon);
+  window.addEventListener('pageshow', relayoutSoon);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) relayoutSoon(); });
+  if (window.ResizeObserver) new ResizeObserver(relayout).observe(board);
+
+  // ---------- Start ----------
+  layout();
+  const saved = store.get('pyramid.game');
+  if (saved && saved.st && saved.st.deck && saved.st.deck.length === 52 && !saved.st.won && saved.st.moves > 0) {
+    st = saved.st; hist = saved.hist || [];
+    buildCards();
+    instant(() => render());
+  }
+  showLobby();
+
+  // Offline-stöd (kräver https eller localhost)
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>

@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="cards.css">
 <script src="i18n.js"></script>
 <script src="cards.js"></script>
+<script src="games.js"></script>
 <style>
   :root { --gold:#f5d58a; --gold2:#c9a24a; --ink:#e9dfc4; --navy:#141a35;
           --u:min(1vw, calc(var(--app-h,100vh) / 75)); }
@@ -129,6 +130,10 @@
   @media (orientation:landscape) and (min-width:820px) {
     #settings .panel { width:min(860px,100%); }
     #settings .cols { display:grid; grid-template-columns:1fr 1fr; gap:0 34px; }
+    /* Statistik: spelen sida vid sida */
+    #stats .panel { width:min(1000px,100%); }
+    #stats-body { display:grid; grid-template-columns:1fr 1fr; gap:0 34px; }
+    #stats-body .game-stats + .game-stats { margin-top:18px; padding-top:0; border-top:0; }
   }
   .game-stats { margin-top:18px; }
   .game-stats + .game-stats { margin-top:28px; padding-top:22px; border-top:1px solid rgba(245,213,138,.2); }
@@ -179,12 +184,12 @@
   <h1 class="fade d1">Solitaires</h1>
   <div class="sub fade d2" data-i18n="subtitle">Solitaire for iPad</div>
   <div class="menu fade d3">
-    <button class="deco gold" id="play">Spider<small id="play-sub"></small></button>
+    <button class="deco gold" id="play"><span data-i18n="play">Play</span><small data-i18n="playSub">Choose a game</small></button>
     <button class="deco line" id="open-stats"><span data-i18n="stats">Statistics</span><small data-i18n="statsSub">Results &amp; records</small></button>
     <button class="deco line" id="open-settings"><span data-i18n="settings">Settings</span><small data-i18n="settingsSub">Appearance &amp; data</small></button>
   </div>
 </main>
-<div class="version">v1.0.1026.1742</div>
+<div class="version">v1.1.1026.1957</div>
 </div>
 
 <div class="overlay" id="stats"><div class="panel wide">
@@ -253,15 +258,8 @@
   const g0 = store.get(SKEY) || {};
   const settings = { anim: g0.anim || 'normal', effects: g0.effects !== false, hints: g0.hints !== false, sound: g0.sound !== false,
                      face: g0.face || 'standard', back: g0.back || 'rings', lang: I18N.lang };
-  const colors = n => t('suits', n);
 
-  // Alla spel i appen. Ett nytt spel läggs till här (och får en knapp i menyn).
-  // Varje spel sparar sin statistik under statsKey som { nivå: { played, won, best, fast } },
-  // där best är bästa poäng och fast är snabbaste vinst i sekunder.
-  const GAMES = [
-    { id: 'spider', name: 'Spider Solitaire', icon: '♠︎', url: 'spider.html', statsKey: 'spider.stats',
-      levels: [1, 2, 4].map(n => ({ key: n, label: colors(n) })) },
-  ];
+  // Alla spel finns i games.js (GAMES)
   const fmtTime = t => t ? Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0') : '–';
   const pct = (won, played) => played ? Math.round(won / played * 100) + ' %' : '–';
   function renderStats() {
@@ -294,13 +292,6 @@
     sky.appendChild(s);
   }
 
-  function refreshPlay() {
-    const g = store.get('spider.game'), st = g && g.st;
-    const sp = store.get('spider.settings') || {};
-    $('play-sub').textContent = st && !st.won && st.moves > 0
-      ? `${t('continue')} · ${t('progress', st.done.length / 13)}`
-      : `Solitaire · ${colors(sp.suits || g0.suits || 2)}`;
-  }
   // Förhandsvisning: några framsidor och en baksida i valda stilar
   const PREVIEW = [{ s: 1, r: 7 }, { s: 0, r: 12 }, { s: 2, r: 1 }];
   function refreshPreview() {
@@ -350,18 +341,17 @@
       setTimeout(() => b.textContent = label, 2500);
     };
   }
-  twoStep('reset-stats', () => store.del('spider.stats'), 'resetStatsDone');
-  twoStep('reset-games', () => { store.del('spider.game'); refreshPlay(); }, 'resetGamesDone');
+  twoStep('reset-stats', () => GAMES.forEach(g => store.del(g.statsKey)), 'resetStatsDone');
+  twoStep('reset-games', () => GAMES.forEach(g => store.del(g.gameKey)), 'resetGamesDone');
   $('open-settings').onclick = () => { refreshSettings(); $('settings').classList.add('open'); };
   $('close').onclick = () => $('settings').classList.remove('open');
   $('settings').onclick = e => { if (e.target.id === 'settings') $('settings').classList.remove('open'); };
   $('open-stats').onclick = () => { renderStats(); $('stats').classList.add('open'); };
   $('stats-close').onclick = () => $('stats').classList.remove('open');
   $('stats').onclick = e => { if (e.target.id === 'stats') $('stats').classList.remove('open'); };
-  $('play').onclick = () => { document.body.classList.add('leaving'); setTimeout(() => location.href = 'spider.html', 220); };
-  window.addEventListener('pageshow', () => { document.body.classList.remove('leaving'); refreshPlay(); });
+  $('play').onclick = () => { document.body.classList.add('leaving'); setTimeout(() => location.href = 'games.html', 220); };
+  window.addEventListener('pageshow', () => document.body.classList.remove('leaving'));
 
-  refreshPlay();
   try { if (sessionStorage.getItem('reopen') === 'settings') { sessionStorage.removeItem('reopen'); $('open-settings').click(); } } catch (err) {}
 
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
