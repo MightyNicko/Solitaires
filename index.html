@@ -57,8 +57,9 @@
   .card .b { position:absolute; inset:auto 0 8% 0; text-align:center; font-size:max(6.5 * var(--u), 34px); line-height:1; }
   .card.back { background:radial-gradient(circle at 50% 50%,#3a2c6e 0 22%,transparent 23%),repeating-radial-gradient(circle at 50% 50%,#24305e 0 6px,#1b2450 6px 12px);
                border:max(.35 * var(--u), 2px) solid #c9a95a; }
-  .card.left { left:12%; top:30%; --rot:-14deg; }
-  .card.right { right:12%; top:28%; --rot:12deg; animation-delay:-3.5s; }
+  /* Kortens underkant ligger i höjd med medaljongens underkant (ca 43 % av höjden) */
+  .card.left { left:12%; top:calc(44% - max(13 * var(--u), 70px) * 1.33); --rot:-14deg; }
+  .card.right { right:12%; top:calc(43% - max(13 * var(--u), 70px) * 1.33); --rot:12deg; animation-delay:-3.5s; }
   @keyframes bob { 0%,100% { transform:translateY(0) rotate(var(--rot)) scale(.85); } 50% { transform:translateY(-1.6vmin) rotate(calc(var(--rot) * 1.15)) scale(.85); } }
   .red { color:#c8102e; }
   @media (max-aspect-ratio:3/4) { .card.left { left:7%; top:12%; } .card.right { right:7%; top:12%; } }
@@ -124,6 +125,11 @@
   td { padding:7px 0; border-top:1px solid rgba(255,255,255,.08); text-align:right; }
   td b { color:var(--gold); font-weight:400; font-family:Georgia,serif; font-size:16px; }
   .panel.wide { width:min(640px,100%); }
+  /* Inställningar: två kolumner i liggande läge så att allt får plats utan att scrolla */
+  @media (orientation:landscape) and (min-width:820px) {
+    #settings .panel { width:min(860px,100%); }
+    #settings .cols { display:grid; grid-template-columns:1fr 1fr; gap:0 34px; }
+  }
   .game-stats { margin-top:18px; }
   .game-stats + .game-stats { margin-top:28px; padding-top:22px; border-top:1px solid rgba(245,213,138,.2); }
   .game-stats h3 { display:flex; align-items:center; gap:10px; margin:0 0 12px; font:400 19px Georgia,serif; color:var(--gold); letter-spacing:.06em; }
@@ -178,7 +184,7 @@
     <button class="deco line" id="open-settings"><span data-i18n="settings">Settings</span><small data-i18n="settingsSub">Appearance &amp; data</small></button>
   </div>
 </main>
-<div class="version">v0.1.1026.1600</div>
+<div class="version">v0.1.1026.1736</div>
 </div>
 
 <div class="overlay" id="stats"><div class="panel wide">
@@ -192,6 +198,7 @@
   <h2 data-i18n="settings">Settings</h2>
   <div class="orn">◆ ◆ ◆</div>
 
+  <div class="cols"><div>
   <div class="group">
     <div class="label" data-i18n-html="sAnim">Animations <em>in all games</em></div>
     <div class="seg" data-key="anim"><button data-v="normal" data-i18n="animNormal">Normal</button><button data-v="fast" data-i18n="animFast">Fast</button><button data-v="off" data-i18n="off">Off</button></div>
@@ -205,6 +212,15 @@
     <div class="seg" data-key="hints"><button data-v="true" data-i18n="on">On</button><button data-v="false" data-i18n="off">Off</button></div>
   </div>
   <div class="group">
+    <div class="label" data-i18n-html="sSound">Sound <em>card sounds in all games</em></div>
+    <div class="seg" data-key="sound"><button data-v="true" data-i18n="on">On</button><button data-v="false" data-i18n="off">Off</button></div>
+  </div>
+  <div class="group">
+    <div class="label" data-i18n="sLang">Language</div>
+    <div class="seg" data-key="lang"><button data-v="en">English</button><button data-v="sv">Svenska</button></div>
+  </div>
+  </div><div>
+  <div class="group">
     <div class="label" data-i18n="sFace">Card front</div>
     <div class="seg" data-key="face"><button data-v="standard" data-i18n="faceStandard">Standard</button><button data-v="classic" data-i18n="faceClassic">Classic</button><button data-v="modern" data-i18n="faceModern">Modern</button></div>
   </div>
@@ -214,14 +230,11 @@
     <div class="pv" id="card-preview"></div>
   </div>
   <div class="group">
-    <div class="label" data-i18n="sLang">Language</div>
-    <div class="seg" data-key="lang"><button data-v="en">English</button><button data-v="sv">Svenska</button></div>
-  </div>
-  <div class="group">
     <div class="label" data-i18n="sData">Data</div>
     <button class="pbtn warn" id="reset-stats" data-i18n="resetStats">Reset statistics for all games</button>
     <button class="pbtn warn" id="reset-games" data-i18n="resetGames">Delete saved games</button>
   </div>
+  </div></div>
   <button class="pbtn gold" id="close" data-i18n="done">Done</button>
 </div></div>
 
@@ -238,7 +251,7 @@
   // Övergripande inställningar. Spelens egna val sparas av respektive spel (t.ex. spider.settings).
   const SKEY = 'solitaires.settings';
   const g0 = store.get(SKEY) || {};
-  const settings = { anim: g0.anim || 'normal', effects: g0.effects !== false, hints: g0.hints !== false,
+  const settings = { anim: g0.anim || 'normal', effects: g0.effects !== false, hints: g0.hints !== false, sound: g0.sound !== false,
                      face: g0.face || 'standard', back: g0.back || 'rings', lang: I18N.lang };
   const colors = n => t('suits', n);
 
@@ -316,7 +329,7 @@
       location.reload();
       return;
     }
-    settings[key] = key === 'effects' || key === 'hints' ? v === 'true' : v;
+    settings[key] = key === 'effects' || key === 'hints' || key === 'sound' ? v === 'true' : v;
     store.set(SKEY, Object.assign(store.get(SKEY) || {}, settings));
     refreshSettings(); applyEffects();
   }));

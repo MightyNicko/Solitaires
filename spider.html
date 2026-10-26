@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="cards.css">
 <script src="i18n.js"></script>
 <script src="cards.js"></script>
+<script src="sounds.js"></script>
 <style>
   :root { --gold:#f5d58a; --gold2:#c9a24a; --ink:#e9dfc4; --glass:rgba(255,255,255,.08); --glassb:rgba(255,255,255,.14); }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -185,6 +186,7 @@
   const BACK = CardFaces.BACKS.includes(global.back) ? global.back : 'rings';
   board.classList.add('face-' + FACE, 'back-' + BACK);
   board.style.setProperty('--dur', (.3 * SPEED) + 's');
+  CardSounds.init(global.sound);   // kortljud kan stängas av i startsidans inställningar
 
   // ---------- Regler ----------
   const D = x => st.deck[x.id];
@@ -372,7 +374,7 @@
     board.style.setProperty('--cw', cw + 'px');
     board.style.setProperty('--ch', ch + 'px');
     const colX = [...Array(10)].map((_, c) => padX + c * colW + (colW - cw) / 2);
-    M = { padX, colW, cw, ch, colX, top, bottom,
+    M = { W, H, padX, colW, cw, ch, colX, top, bottom,
           sx: db.left - br.left + db.width / 2 - cw / 2, sy: db.top - br.top + db.height / 2 - ch / 2,
           rx: rr.left - br.left + rr.width / 2 - cw / 2, ry: rr.top - br.top + rr.height / 2 - ch / 2 };
     slots.forEach((s, c) => { s.style.left = colX[c] + 'px'; s.style.top = top + 'px'; });
@@ -388,8 +390,12 @@
   }
   function render(anim = {}) {
     const delay = anim.delay || {};
+    const quiet = board.classList.contains('noanim');
     const set = (id, x, y, z, cls) => {
       const e = els[id];
+      // Ett kort som flyttas låter när det landar: efter sin fördröjning och ca 60 % av rörelsen (den bromsar in mot slutet)
+      if (!quiet && (Math.abs(parseFloat(e.style.left) - x) > 8 || Math.abs(parseFloat(e.style.top) - y) > 8))
+        CardSounds.place(((delay[id] || 0) + 180) * SPEED, cls.includes('gone') ? .6 : 1);
       e.style.left = x + 'px'; e.style.top = y + 'px'; e.style.zIndex = z;
       e.className = cls; e.style.transform = ''; e.style.transitionDelay = (delay[id] || 0) * SPEED + 'ms';
     };
@@ -431,6 +437,7 @@
 
   board.addEventListener('pointerdown', e => {
     if (drag || busy || !st || st.won) return;
+    if (relayout()) return;   // skärmen har vridits utan att vi märkt det: rätta layouten först
     const el = e.target.closest('.card');
     if (!el) return;
     const id = +el.dataset.id, loc = find(id);
@@ -471,6 +478,7 @@
       const d = g.ok ? bestDest(g.c, g.i) : -1;
       if (d >= 0) doMove(g.c, g.i, d); else shake(g.run);
     }
+    setTimeout(relayout, 400);   // om skärmen vreds under draget
   }
   window.addEventListener('pointerup', e => endDrag(e, false));
   window.addEventListener('pointercancel', e => endDrag(e, true));
@@ -530,7 +538,19 @@
   }, 1000);
   window.addEventListener('pagehide', save);
   document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
-  window.addEventListener('resize', () => { if (drag) return; layout(); if (st) instant(() => render()); });
+  // Räkna om layouten när skärmen ändrar storlek. iOS skickar inte alltid resize vid vridning
+  // (t.ex. om iPaden vreds medan appen låg i bakgrunden), så vi lyssnar på flera håll.
+  function relayout() {
+    if (drag || !M || (M.W === board.clientWidth && M.H === board.clientHeight)) return false;
+    layout(); if (st) instant(() => render());
+    return true;
+  }
+  const relayoutSoon = () => { relayout(); requestAnimationFrame(relayout); setTimeout(relayout, 350); };
+  window.addEventListener('resize', relayoutSoon);
+  window.addEventListener('orientationchange', relayoutSoon);
+  window.addEventListener('pageshow', relayoutSoon);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) relayoutSoon(); });
+  if (window.ResizeObserver) new ResizeObserver(relayout).observe(board);
 
   // ---------- Start ----------
   for (let c = 0; c < 10; c++) { const s = document.createElement('div'); s.className = 'slot'; board.appendChild(s); slots.push(s); }
