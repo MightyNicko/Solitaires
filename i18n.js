@@ -60,6 +60,16 @@
       klonWin: 'All cards are on the foundations!', klonLost: 'No move helps any more and the draw pile can no longer help.',
       klonProgress: n => `${n} of 52 home`, klonChangeSub: 'Choose cards per draw and passes',
       drawLabel: 'Cards per draw', drawCards: n => n === 1 ? 'Draw 1' : `Draw ${n}`, toastNoMoveDraw: 'No moves – draw a card',
+      // FreeCell, TriPeaks, Yukon och Fyrtio rövare
+      freecell: 'FreeCell', tripeaks: 'TriPeaks', yukon: 'Yukon',
+      cellsHud: 'Cells', cellsLabel: 'Free cells', cellsN: n => `${n} cells`, fcChangeSub: 'Choose number of free cells', fcLost: 'No card can be moved any more.',
+      fcRules: 'All cards are face up. Build the columns down in alternating colours and park single cards in the free cells. Any card may go in an empty column. Build the foundations up by suit from ace to king.',
+      streak: 'Streak', tpWin: 'All three peaks are cleared!', tpClassicRules: 'Ace and king do not connect.',
+      tpRules: 'Move free cards to the discard pile if they are one higher or one lower, regardless of suit. Cards turn over when nothing covers them. Long streaks give bonus points. Clear all three peaks to win.',
+      russian: 'Russian', ykClassicRules: 'Build down in alternating colours.', ykRussianRules: 'Build down in the same suit – much harder.',
+      ykRules: 'There is no draw pile. Move any face-up card together with all cards on top of it onto a card one higher. Only a king may go in an empty column. Build the foundations up by suit from ace to king.',
+      ftRules: 'Two decks. Build the columns down in the same suit, one card at a time; any card may go in an empty column. Build the eight foundations up by suit from ace to king.',
+      ftProgress: n => `${n} of 104 home`, ftChangeSub: 'Choose passes',
     },
     sv: {
       on: 'På', off: 'Av', done: 'Klar', cancel: 'Avbryt',
@@ -111,6 +121,15 @@
       klonWin: 'Alla kort ligger på grundhögarna!', klonLost: 'Inget drag hjälper längre och draghögen kan inte hjälpa mer.',
       klonProgress: n => `${n} av 52 klara`, klonChangeSub: 'Välj antal kort och varv',
       drawLabel: 'Kort per dragning', drawCards: n => `Dra ${n}`, toastNoMoveDraw: 'Inga drag – dra ett kort',
+      freecell: 'FreeCell', tripeaks: 'TriPeaks', yukon: 'Yukon',
+      cellsHud: 'Celler', cellsLabel: 'Fria celler', cellsN: n => `${n} celler`, fcChangeSub: 'Välj antal fria celler', fcLost: 'Inget kort kan flyttas längre.',
+      fcRules: 'Alla kort ligger uppvända. Bygg nedåt i kolumnerna med omväxlande röd och svart, och parkera enstaka kort i de fria cellerna. Vilket kort som helst får läggas i en tom kolumn. Bygg grundhögarna uppåt i samma färg från ess till kung.',
+      streak: 'Serie', tpWin: 'Alla tre toppar är tömda!', tpClassicRules: 'Ess och kung hänger inte ihop.',
+      tpRules: 'Lägg fria kort på kasthögen om de är ett steg högre eller lägre, oavsett färg. Korten vänds upp när inget längre ligger på dem. Långa serier ger bonuspoäng. Töm alla tre topparna för att vinna.',
+      russian: 'Ryska', ykClassicRules: 'Bygg nedåt i omväxlande röd och svart.', ykRussianRules: 'Bygg nedåt i samma färg – mycket svårare.',
+      ykRules: 'Det finns ingen draghög. Flytta vilket uppvänt kort som helst, med alla kort ovanpå, till ett kort som är ett steg högre. Bara en kung får läggas i en tom kolumn. Bygg grundhögarna uppåt i samma färg från ess till kung.',
+      ftRules: 'Två kortlekar. Bygg nedåt i kolumnerna i samma färg, ett kort i taget. Vilket kort som helst får läggas i en tom kolumn. Bygg de åtta grundhögarna uppåt i samma färg från ess till kung.',
+      ftProgress: n => `${n} av 104 klara`, ftChangeSub: 'Välj antal varv',
     },
   };
 

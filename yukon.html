@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Solitaires">
+<meta name="theme-color" content="#10152e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Yukon Solitaire</title>
+<link rel="stylesheet" href="cards.css">
+<script src="i18n.js"></script>
+<script src="cards.js"></script>
+<script src="sounds.js"></script>
+<style>
+  :root { --gold:#f5d58a; --gold2:#c9a24a; --ink:#e9dfc4; --glass:rgba(255,255,255,.08); --glassb:rgba(255,255,255,.14); }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:var(--app-h,100%); overflow:hidden; overscroll-behavior:none; background:#0b0f22; }
+  body { color:var(--ink); font-family:-apple-system,"Segoe UI",system-ui,sans-serif; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+  /* Spelplanen täcker hela skärmen. Överkanten har samma färg som statusfältet (theme-color #10152e). */
+  #board { position:fixed; top:0; left:0; right:0; height:var(--app-h,100%); touch-action:none;
+           background:linear-gradient(180deg,#10152e env(safe-area-inset-top),rgba(16,21,46,0) calc(env(safe-area-inset-top) + 90px)), radial-gradient(circle at 50% 40%,#2a3566 0%,#141a35 55%,#0b0f22 100%); }
+  #board.noanim .card { transition:none !important; }
+
+  /* HUD */
+  .ring { position:absolute; top:calc(env(safe-area-inset-top) + 10px); left:calc(env(safe-area-inset-left) + 14px); width:58px; height:58px; border-radius:50%; z-index:2000;
+          background:conic-gradient(var(--gold) calc(var(--p,0) * 1%), rgba(255,255,255,.12) 0); display:grid; place-items:center; transition:--p .4s; }
+  .ring span { width:46px; height:46px; border-radius:50%; background:#141a35; display:grid; place-items:center; font-weight:700; font-size:15px; color:var(--gold); }
+  /* Poängraden överst: rundad som förut, spelets namn mellan två gulddiamanter, siffrorna på var sin sida */
+  .hud { position:absolute; top:calc(env(safe-area-inset-top) + 12px); left:50%; transform:translateX(-50%); z-index:2000;
+         display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:22px; padding:9px 28px; border-radius:40px; white-space:nowrap;
+         font-size:12px; line-height:1; letter-spacing:.12em; text-transform:uppercase; color:var(--ink);
+         background:linear-gradient(180deg,#1d2550,#141a35); border:1px solid rgba(245,213,138,.55); }
+  .hud > * { display:flex; align-items:center; gap:22px; }
+  .hud .l { justify-content:flex-end; } .hud .r { justify-content:flex-start; }
+  .hud span { display:flex; align-items:center; }
+  .hud .ttl { gap:12px; color:var(--gold); }
+  .hud .ttl::before, .hud .ttl::after { content:"◆"; font-size:9px; letter-spacing:0; }
+  .hud .ttl span { font:400 21px/1 Georgia,serif; letter-spacing:.42em; margin-right:-.42em; padding-top:2px; }
+  .hud em { font-style:normal; opacity:.85; }
+  .hud b { color:var(--gold); font-size:16px; margin-left:6px; letter-spacing:0; font-variant-numeric:tabular-nums; }
+
+  /* Docka */
+  .dock { position:absolute; bottom:calc(env(safe-area-inset-bottom) + 12px); left:50%; transform:translateX(-50%); display:flex; gap:12px; padding:9px 14px; border-radius:28px;
+          background:rgba(20,26,53,.55); border:1px solid var(--glassb); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); z-index:2000; }
+  .dock button { all:unset; touch-action:manipulation; width:66px; height:56px; border-radius:18px; display:flex; flex-direction:column; align-items:center;
+                 justify-content:center; gap:3px; background:rgba(255,255,255,.06); color:var(--ink); cursor:pointer; font-size:10.5px;
+                 letter-spacing:.07em; text-transform:uppercase; transition:transform .1s, opacity .2s; }
+  .dock button svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .dock button:active { transform:scale(.94); }
+  .dock button.deal { width:92px; background:linear-gradient(180deg,var(--gold),var(--gold2)); color:#1b1b2e; font-weight:700; }
+  .dock button:disabled { opacity:.35; cursor:default; }
+  .dock button.off { opacity:.35; }   /* avstängd i inställningarna, men går att trycka på */
+  .dock button.pulse { animation:pulse 1s 2; }
+  @keyframes pulse { 50% { box-shadow:0 0 0 4px var(--gold), 0 0 24px var(--gold); } }
+
+  /* Kort */
+  .slot { position:absolute; width:var(--cw); height:var(--ch); border-radius:calc(var(--cw) * .09); border:1px solid rgba(245,213,138,.35); background:rgba(255,255,255,.03); }
+  .card { position:absolute; left:0; top:0; width:var(--cw); height:var(--ch); border-radius:calc(var(--cw) * .09); cursor:pointer;
+          transition:left var(--dur,.3s) cubic-bezier(.2,.8,.2,1), top var(--dur,.3s) cubic-bezier(.2,.8,.2,1), transform var(--dur,.3s) cubic-bezier(.2,.8,.2,1), opacity var(--dur,.3s);
+          box-shadow:0 3px 9px rgba(0,0,0,.45); }   /* fram- och baksidor: se cards.css */
+  .card.stock { opacity:0; pointer-events:none; }
+  .card.gone { opacity:0; transform:scale(.25); pointer-events:none; }
+  .card.dragging { transition:none; box-shadow:0 12px 26px rgba(0,0,0,.55); }
+  .card.hint, .slot.hint { box-shadow:0 0 0 3px var(--gold), 0 0 22px var(--gold); }
+  .card.target, .slot.target { box-shadow:0 0 0 3px rgba(245,213,138,.85), 0 0 14px rgba(245,213,138,.6); }
+  .card.shake { animation:shake .32s; }
+  @keyframes shake { 25% { translate:-5px 0; } 50% { translate:5px 0; } 75% { translate:-3px 0; } }
+
+  /* Toast & dialoger */
+  .toast { position:fixed; left:50%; bottom:calc(104px + env(safe-area-inset-bottom)); transform:translate(-50%,20px); opacity:0; transition:.25s;
+           background:rgba(20,26,53,.92); border:1px solid var(--glassb); padding:10px 18px; border-radius:20px; font-size:15px; z-index:5000; pointer-events:none; white-space:nowrap; }
+  .toast.show { opacity:1; transform:translate(-50%,0); }
+  .overlay { position:fixed; top:0; left:0; right:0; height:var(--app-h,100%); background:rgba(5,8,20,.6); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); display:none; place-items:center; z-index:6000; padding:16px; }
+  .overlay.open { display:grid; }
+  .panel { width:min(420px,100%); background:linear-gradient(180deg,#1d2550,#141a35); border:1px solid rgba(245,213,138,.35); border-radius:24px;
+           padding:26px; text-align:center; box-shadow:0 30px 80px rgba(0,0,0,.6); }
+  .panel h2 { margin:0 0 6px; color:var(--gold); font-family:Georgia,serif; font-size:28px; font-weight:400; }
+  .panel p { margin:0 0 18px; opacity:.8; line-height:1.4; }
+  .btn { all:unset; display:block; box-sizing:border-box; width:100%; touch-action:manipulation; padding:14px; border-radius:14px; background:rgba(255,255,255,.08); margin-top:10px; cursor:pointer; font-size:16px; text-align:center; }
+  .btn.gold { background:linear-gradient(180deg,var(--gold),var(--gold2)); color:#1b1b2e; font-weight:700; }
+  .seg { display:flex; background:rgba(255,255,255,.06); border-radius:14px; padding:4px; margin:0 0 6px; }
+  .seg .btn { flex:1; margin:0; padding:10px 6px; font-size:14px; background:transparent; }
+  .seg .btn.on { background:var(--gold); color:#1b1b2e; font-weight:700; }
+  .statgrid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:16px 0 6px; font-size:12px; opacity:.85; }
+  .statgrid b { display:block; color:var(--gold); font-size:22px; font-family:Georgia,serif; font-weight:400; }
+  .row { display:flex; gap:10px; } .row .btn { flex:1; }
+  .label { font-size:12px; letter-spacing:.08em; text-transform:uppercase; opacity:.7; margin:4px 0 8px; }
+  .btn small { display:block; font-size:12px; font-weight:400; opacity:.75; margin-top:3px; }
+  .btn.link { background:transparent; font-size:14px; opacity:.8; }
+  /* Slutdialogerna (vinst och inga fler drag): bredare, och varje knapp säger vad som händer */
+  .panel.end { width:min(560px,100%); }
+  @media (max-width:480px) { .panel.end .row { flex-direction:column; gap:0; } }
+
+  /* Startskärmen: inställningar och Spela */
+  .lobby .panel { width:min(440px,100%); max-height:calc(var(--app-h,100vh) - 32px); overflow:auto; -webkit-overflow-scrolling:touch;
+                  border-radius:6px; border-color:rgba(245,213,138,.5);
+                  box-shadow:0 0 0 6px rgba(20,26,53,.9), 0 0 0 7px rgba(245,213,138,.25), 0 30px 80px rgba(0,0,0,.6); }
+  .lobby .medal { width:72px; height:72px; margin:0 auto 12px; border-radius:50%; display:grid; place-items:center; font-size:40px; color:var(--gold);
+                  background:radial-gradient(circle at 40% 30%,#2e3a75,#141a35 70%); border:3px solid var(--gold);
+                  box-shadow:0 0 0 5px rgba(245,213,138,.15), 0 0 26px rgba(245,213,138,.35); }
+  /* Symbolen i medaljen är en SVG-figur (Gran), ritad med mitten i (24, 24) så att den hamnar mitt i cirkeln */
+  .lobby .medal svg { width:40px; height:40px; display:block; overflow:visible; }
+  .lobby h2 { margin:0; font-size:26px; letter-spacing:.24em; text-indent:.24em; text-transform:uppercase; }
+  .lobby .orn { color:var(--gold); font-size:11px; letter-spacing:.5em; text-indent:.5em; text-transform:uppercase; opacity:.7; margin:6px 0 10px; }
+  .lobby .label { margin-top:16px; }
+  .lobby .statgrid { margin-bottom:16px; }
+
+  @media (max-width:640px) {
+    .ring { width:46px; height:46px; top:calc(env(safe-area-inset-top) + 56px); left:calc(env(safe-area-inset-left) + 8px); } .ring span { width:36px; height:36px; font-size:12px; }
+    .hud { gap:10px; padding:7px 18px; font-size:9px; top:calc(env(safe-area-inset-top) + 12px); } .hud > * { gap:10px; } .hud .ttl { gap:8px; } .hud .ttl span { font-size:15px; letter-spacing:.3em; margin-right:-.3em; } .hud b { font-size:13px; margin-left:4px; }
+    .dock { gap:6px; padding:7px 9px; bottom:calc(env(safe-area-inset-bottom) + 10px); } .dock button { width:52px; height:50px; font-size:9px; } .dock button.deal { width:70px; }
+  }
+
+  /* Riktigt smal skärm: långa spelnamn (Spindelharpan) får tätare bokstäver så att poängraden ryms */
+  @media (max-width:440px) {
+    .hud { gap:8px; padding:7px 14px; } .hud > * { gap:8px; } .hud .ttl { gap:6px; }
+    .hud .ttl span { font-size:14px; letter-spacing:.14em; margin-right:-.14em; }
+  }
+
+  /* iOS/iPadOS 27 suddar till överkanten i hemskärmsappar. Ett fast element överst (minst 90 % brett,
+     över 10 px högt) får WebKit att färga kanten i elementets bakgrundsfärg i stället. background-clip:text
+     gör att remsan själv inte ritar något. Färgen är densamma som theme-color och bakgrundens överkant. */
+  .remove-blur { display:none; }
+  @media (display-mode: standalone) {
+    .remove-blur { display:block; position:fixed; inset:0 0 auto; height:max(11px, env(safe-area-inset-top)); z-index:2147483647; pointer-events:none;
+                   background:#10152e; -webkit-background-clip:text; background-clip:text; }
+  }
+  /* Samma som i Pyramid: tonade och valda kort, draghögens ring och antal */
+  .card.dim { filter:brightness(.62) saturate(.8); }
+  .card.sel { box-shadow:0 0 0 3px var(--gold), 0 0 24px var(--gold); }
+  .card.match { box-shadow:0 0 0 2px rgba(245,213,138,.7), 0 0 12px rgba(245,213,138,.45); }
+  .slot.stock { display:grid; place-items:center; color:var(--gold); font-size:calc(var(--cw) * .4); cursor:pointer; }
+  .slot.stock.empty { opacity:.35; cursor:default; }
+  .badge { position:absolute; min-width:26px; height:26px; padding:0 7px; border-radius:13px; background:var(--gold); color:#1b1b2e; font-weight:800; font-size:13px;
+           display:grid; place-items:center; box-shadow:0 2px 6px rgba(0,0,0,.4); z-index:1500; pointer-events:none; }
+  .plabel { position:absolute; font-size:11px; letter-spacing:.16em; text-transform:uppercase; opacity:.6; text-align:center; pointer-events:none; }
+  .lobby .rules { font-size:13px; margin:2px 0 0; }
+  /* Grundhögarna visar sitt färgtecken när de är tomma */
+  .slot.found { display:grid; place-items:center; color:rgba(245,213,138,.35); font-size:calc(var(--cw) * .5); }
+</style>
+</head>
+<body>
+<div class="remove-blur" aria-hidden="true"></div>
+<div id="board">
+  <div class="ring" id="ring"><span id="cleared">0/52</span></div>
+  <div class="hud"><div class="l"><span><em data-i18n="score">Score</em><b id="score">0</b></span><span><em data-i18n="moves">Moves</em><b id="moves">0</b></span></div><div class="ttl"><span data-i18n="yukon">Yukon</span></div><div class="r"><span><em data-i18n="time">Time</em><b id="time">0:00</b></span></div></div>
+  <div class="slot found" id="f0">♠&#xFE0E;</div><div class="slot found" id="f1">♥&#xFE0E;</div><div class="slot found" id="f2">♦&#xFE0E;</div><div class="slot found" id="f3">♣&#xFE0E;</div>
+  <div class="slot" id="t0"></div><div class="slot" id="t1"></div><div class="slot" id="t2"></div><div class="slot" id="t3"></div><div class="slot" id="t4"></div><div class="slot" id="t5"></div><div class="slot" id="t6"></div>
+  <div class="dock">
+    <button id="b-menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span data-i18n="menu">Menu</span></button>
+    <button id="b-undo"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span data-i18n="undo">Undo</span></button>
+    <button id="b-hint"><svg viewBox="0 0 24 24"><path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z"/></svg><span data-i18n="hint">Hint</span></button>
+    <button id="b-new"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span data-i18n="new">New</span></button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<div class="overlay lobby" id="lobby"><div class="panel">
+  <div class="medal"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#f5d58a" d="M24 6l7 9h-3.5l6 8H30l7 9H11l7-9h-3.5l6-8H17z"/><rect x="21.5" y="32" width="5" height="9" rx="1" fill="#f5d58a"/></svg></div>
+  <h2 data-i18n="yukon">Yukon</h2>
+  <div class="orn">◆ Solitaire ◆</div>
+  <p class="rules" id="rules"></p>
+  <div class="label" data-i18n="variant">Variant</div>
+  <div class="seg" data-key="variant"><button class="btn" data-v="classic" data-i18n="classic">Classic</button><button class="btn" data-v="russian" data-i18n="russian">Russian</button></div>
+  <div class="statgrid"><div><b id="st-played">0</b><span data-i18n="played">Played</span></div><div><b id="st-won">0</b><span data-i18n="won">Won</span></div><div><b id="st-best">–</b><span data-i18n="bestScore">Best score</span></div></div>
+  <button class="btn gold" id="l-resume"></button>
+  <button class="btn gold" id="l-play"></button>
+  <button class="btn link" id="l-home" data-i18n="allGames">‹ All games</button>
+</div></div>
+
+<div class="overlay" id="confirm"><div class="panel">
+  <h2 data-i18n="confirmTitle">New game?</h2>
+  <p data-i18n="confirmText">The current game will end.</p>
+  <div class="row"><button class="btn" id="c-no" data-i18n="cancel">Cancel</button><button class="btn gold" id="c-yes" data-i18n="newGame">New game</button></div>
+</div></div>
+
+<div class="overlay" id="win"><div class="panel end">
+  <h2 data-i18n="winTitle">Congratulations!</h2>
+  <p><span data-i18n="klonWin">All cards are on the foundations!</span><br><span id="win-text"></span></p>
+  <div class="row"><button class="btn" id="w-change"></button><button class="btn gold" id="w-new"></button></div>
+</div></div>
+
+<div class="overlay" id="lost"><div class="panel end">
+  <h2 data-i18n="lostTitle">No more moves</h2>
+  <p><span data-i18n="fcLost">No card can be moved any more.</span><br><span id="lost-text"></span></p>
+  <div class="row"><button class="btn" id="lo-undo"></button><button class="btn" id="lo-change"></button><button class="btn gold" id="lo-new"></button></div>
+</div></div>
+
+<script>
+(() => {
+  const t = I18N.t;
+  I18N.apply();
+  const $ = id => document.getElementById(id);
+  const board = $('board');
+
+  let st = null, hist = [], els = [], M = null, drag = null, finishing = false;
+  let hintIdx = 0, hintTimer = 0, paused = false;
+
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+  };
+  // Statistiken sparas per variant i samma form som Spiders: "classic" eller "russian"
+  const LEVELS = ['classic', 'russian'];
+  function loadStats() {
+    const s = store.get('yukon.stats') || {};
+    for (const k of LEVELS) s[k] = s[k] || { played:0, won:0, best:0, fast:0 };
+    return s;
+  }
+  const saveStats = s => store.set('yukon.stats', s);
+  const save = () => st && store.set('yukon.game', { st, hist: hist.slice(-300) });
+
+  // Animationer, tips, ljud och kortens utseende är övergripande inställningar (startsidan). Varianten är Yukons egen.
+  const global = store.get('solitaires.settings') || {};
+  const SKEY = 'yukon.settings';
+  const settings = Object.assign({ variant: 'classic' }, store.get(SKEY) || {});
+  const SPEED = { normal: 1, fast: .5, off: 0 }[global.anim] ?? 1;
+  const HINTS = global.hints !== false;
+  const FACE = CardFaces.FACES.includes(global.face) ? global.face : 'standard';
+  const BACK = CardFaces.BACKS.includes(global.back) ? global.back : 'rings';
+  board.classList.add('face-' + FACE, 'back-' + BACK);
+  board.style.setProperty('--dur', (.3 * SPEED) + 's');
+  CardSounds.init(global.sound);
+
+  // ---------- Regler ----------
+  // Sju kolumner (tab) med kort { id, up } och ingen draghög. Vilket uppvänt kort som helst får flyttas tillsammans med
+  // alla kort ovanpå, även om de inte ligger i ordning. Det flyttade kortet ska vara ett steg lägre än kortet det läggs på,
+  // i omväxlande röd och svart (Ryska: i samma färg). Bara en kung får läggas i en tom kolumn.
+  // Fyra grundhögar (found), en per färg, byggs från ess till kung.
+  const rank = id => st.deck[id].r, suit = id => st.deck[id].s;
+  const red = id => suit(id) === 1 || suit(id) === 2;
+  const last = a => a[a.length - 1];
+  const homed = () => st.found.reduce((n, f) => n + f.length, 0);
+  const toFound = id => rank(id) === st.found[suit(id)].length + 1;
+  const fitsOn = (id, below) => (st.variant === 'russian' ? suit(below) === suit(id) : red(below) !== red(id)) && rank(below) === rank(id) + 1;
+  function toTab(id, c) { const tp = last(st.tab[c]); return tp ? tp.up && fitsOn(id, tp.id) : rank(id) === 13; }
+  function where(id) {
+    for (let s = 0; s < 4; s++) if (st.found[s].length && last(st.found[s]) === id) return { from: 'found', s, ids: [id] };
+    for (let c = 0; c < 7; c++) {
+      const k = st.tab[c].findIndex(x => x.id === id);
+      if (k >= 0) return st.tab[c][k].up ? { from: 'tab', c, k, ids: st.tab[c].slice(k).map(x => x.id) } : null;
+    }
+    return null;
+  }
+  // Drag som för spelet framåt (för tips och för att se om spelet har kört fast). En grupp som redan ligger på ett kort
+  // den passar på flyttas inte, och inte heller en kung som redan ligger i botten av en kolumn.
+  function findMoves() {
+    const res = [];
+    for (let c = 0; c < 7; c++) { const col = st.tab[c]; if (col.length && toFound(last(col).id)) res.push({ ids: [last(col).id], to: 'found', pri: 3 }); }
+    for (let c = 0; c < 7; c++) {
+      const col = st.tab[c];
+      col.forEach((x, k) => {
+        if (!x.up) return;
+        const below = col[k - 1];
+        if (below && below.up && fitsOn(x.id, below.id)) return;
+        if (!below && rank(x.id) === 13) return;
+        for (let d = 0; d < 7; d++) if (d !== c && toTab(x.id, d)) res.push({ ids: col.slice(k).map(y => y.id), to: d, pri: below && !below.up ? 2 : 1 });
+      });
+    }
+    return res.sort((a, b) => b.pri - a.pri);
+  }
+
+  // ---------- Spelflöde ----------
+  function newGame() {
+    const { variant } = settings;
+    const stats = loadStats(); stats[variant].played++; saveStats(stats);
+    const deck = [];
+    for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) deck.push({ s, r });
+    const ids = deck.map((_, i) => i);
+    for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+    // Första kolumnen får ett kort, de andra c nedvända och fem uppvända
+    const tab = [...Array(7)].map((_, c) => ids.splice(0, c === 0 ? 1 : c + 5).map((id, k) => ({ id, up: k >= c })));
+    st = { deck, tab, found: [[], [], [], []], score: 0, moves: 0, time: 0, variant, won: false };
+    hist = []; finishing = false; clearHint(); buildCards();
+    instant(() => els.forEach(e => { e.style.left = (M.W / 2 - M.cw / 2) + 'px'; e.style.top = (M.H + 40) + 'px'; e.className = 'card'; }));
+    // Korten delas ut rad för rad, som vid ett riktigt bord
+    const delay = {};
+    let n = 0;
+    for (let k = 0; k < 11; k++) for (let c = 0; c < 7; c++) if (tab[c][k]) delay[tab[c][k].id] = n++ * 22;
+    render({ delay }); save();
+  }
+  function snapshot() { return JSON.stringify({ tab: st.tab, found: st.found, score: st.score }); }
+  function pushHist() { hist.push(snapshot()); if (hist.length > 500) hist.shift(); }
+  function after(anim) {
+    clearHint(); render(anim); save();
+    if (homed() === 52 && !st.won) win();
+    else if (canFinish()) autoFinish();
+    else if (stuck()) setTimeout(() => {
+      if (!st || st.won || !stuck()) return;
+      $('lost-text').textContent = t('winStats', { score: st.score, moves: st.moves, time: fmt(st.time) });
+      open('lost');
+    }, 700);
+  }
+  const stuck = () => !st.won && !finishing && !findMoves().length;
+  // Flytta kort. Poäng som i Harpan: till grundhög +10, från grundhög tillbaka till kolumn −15, och +5 när ett kort vänds upp.
+  function move(ids, to) {
+    const w = where(ids[0]);
+    pushHist();
+    if (w.from === 'found') st.found[w.s].pop(); else st.tab[w.c].splice(w.k);
+    if (to === 'found') { st.found[suit(ids[0])].push(ids[0]); st.score += 10; }
+    else {
+      ids.forEach(id => st.tab[to].push({ id, up: true }));
+      if (w.from === 'found') st.score = Math.max(0, st.score - 15);
+    }
+    if (w.from === 'tab') { const tp = last(st.tab[w.c]); if (tp && !tp.up) { tp.up = true; st.score += 5; } }
+    st.moves++;
+    after({ vol: MOVE_VOL, delay: Object.fromEntries(ids.map((id, i) => [id, i * 30])) });
+  }
+  function undo() {
+    if (!hist.length || st.won || finishing) return;
+    const moves = st.moves;
+    Object.assign(st, JSON.parse(hist.pop()));
+    st.moves = moves + 1;
+    after({ vol: MOVE_VOL });
+  }
+  // När alla kort är uppvända och varje kolumn ligger i fallande ordning (inget större kort ovanpå ett mindre)
+  // är spelet avgjort: det minsta kvarvarande kortet ligger alltid överst. Korten läggs då upp av sig själva.
+  const canFinish = () => !st.won && st.tab.every(col => col.every((x, k) => x.up && (k === 0 || rank(x.id) < rank(col[k - 1].id))));
+  function autoFinish() {
+    if (finishing) return;
+    finishing = true;
+    const step = () => {
+      if (!st || st.won) { finishing = false; return; }
+      const cs = [...Array(7).keys()].filter(c => st.tab[c].length && toFound(last(st.tab[c]).id));
+      if (!cs.length) { finishing = false; return; }
+      const c = cs.sort((a, b) => rank(last(st.tab[a]).id) - rank(last(st.tab[b]).id))[0], id = last(st.tab[c]).id;
+      st.tab[c].pop(); st.found[suit(id)].push(id); st.score += 10; st.moves++;
+      render({ vol: MOVE_VOL }); save();
+      if (homed() === 52) { finishing = false; win(); } else setTimeout(step, 110 * Math.max(SPEED, .3));
+    };
+    setTimeout(step, 300);
+  }
+  function win() {
+    st.won = true; save(); updateHud();
+    const stats = loadStats(), s = stats[st.variant];
+    s.won++; if (st.score > s.best) s.best = st.score;
+    if (!s.fast || st.time < s.fast) s.fast = st.time;   // snabbaste vinst i sekunder
+    saveStats(stats);
+    setTimeout(() => { $('win-text').textContent = t('winStats', { score: st.score, moves: st.moves, time: fmt(st.time) }); open('win'); }, 900);
+  }
+  // Tryck på ett kort: det översta kortet går helst till sin grundhög, annars flyttas kortet med allt ovanpå till en
+  // kolumn där det passar (helst en med kort i, och en kung bara till en tom kolumn om den inte redan ligger i botten).
+  function best(ids) {
+    const w = where(ids[0]);
+    if (ids.length === 1 && w.from !== 'found' && toFound(ids[0])) return 'found';
+    const cols = [...Array(7).keys()].filter(d => !(w.from === 'tab' && d === w.c) && toTab(ids[0], d));
+    const full = cols.find(d => st.tab[d].length);
+    if (full !== undefined) return full;
+    if (cols.length && !(w.from === 'tab' && w.k === 0)) return cols[0];
+    return null;
+  }
+
+  // ---------- Tips ----------
+  function hint() {
+    if (!HINTS) { toast(t('toastHintsOff')); return; }
+    if (!st || st.won) return;
+    clearHintMarks();
+    const moves = findMoves();
+    if (!moves.length) { toast(t('toastNoMoves')); return; }
+    const m = moves[hintIdx++ % moves.length];
+    m.ids.forEach(id => els[id].classList.add('hint'));
+    targetEl(m.to, m.ids[0]).classList.add('hint');
+    hintTimer = setTimeout(clearHintMarks, 1600);
+  }
+  function clearHintMarks() { clearTimeout(hintTimer); board.querySelectorAll('.hint').forEach(e => e.classList.remove('hint')); }
+  function clearHint() { hintIdx = 0; clearHintMarks(); }
+
+  // ---------- Layout & rendering ----------
+  function instant(fn) { board.classList.add('noanim'); fn(); void board.offsetWidth; board.classList.remove('noanim'); }
+  function buildCards() {
+    els.forEach(e => e.remove());
+    els = st.deck.map((c, id) => {
+      const e = document.createElement('div');
+      e.className = 'card'; e.dataset.id = id;
+      e.innerHTML = CardFaces.html(c, FACE);
+      board.appendChild(e);
+      return e;
+    });
+  }
+  const put = (e, x, y) => { e.style.left = x + 'px'; e.style.top = y + 'px'; };
+  const DOWN = .12, UP = .26;   // hur mycket av ett nedvänt och ett uppvänt kort som syns i en kolumn
+  function layout() {
+    const W = board.clientWidth, H = board.clientHeight, br = board.getBoundingClientRect();
+    // På en smal telefon ligger ringen under banderollen, och då börjar korten under ringen
+    const hudB = document.querySelector('.hud').getBoundingClientRect().bottom - br.top + 16;
+    const T = W <= 640 ? Math.max(hudB, $('ring').getBoundingClientRect().bottom - br.top + 10) : hudB;
+    const B = document.querySelector('.dock').getBoundingClientRect().top - br.top - 12;
+    const land = W > H, gapR = land ? .2 : .14;
+    // Grundhögarna i en rad överst i mitten, kolumnerna under. Långa kolumner trycks ihop i render().
+    const cw = Math.min((W - (land ? 200 : 32)) / (7 + 6 * gapR), (B - T) / (1.4 * 3.9), 112);
+    const ch = cw * 1.4, gap = cw * gapR, colsW = 7 * cw + 6 * gap, x0 = W / 2 - colsW / 2;
+    const xs = [...Array(7)].map((_, c) => x0 + c * (cw + gap));
+    const fx = [...Array(4)].map((_, i) => W / 2 - (4 * cw + 3 * gap) / 2 + i * (cw + gap));
+    const ty = T + ch + Math.max(16, cw * .25);
+    M = { W, H, cw, ch, xs, fx, top: T, ty, bottom: B };
+    board.style.setProperty('--cw', cw + 'px');
+    board.style.setProperty('--ch', ch + 'px');
+    for (let s = 0; s < 4; s++) put($('f' + s), fx[s], T);
+    for (let c = 0; c < 7; c++) put($('t' + c), xs[c], ty);
+  }
+  // Avstånden i en kolumn. Får inte alla kort plats ovanför dockan trycks de ihop.
+  function steps(col) {
+    const ups = col.filter(x => x.up).length, downs = col.length - ups;
+    const need = (downs * DOWN + Math.max(0, ups - 1) * UP) * M.ch, room = M.bottom - M.ty - M.ch;
+    const f = need > room && need > 0 ? room / need : 1;
+    return [DOWN * M.ch * f, UP * M.ch * f];
+  }
+  const MOVE_VOL = .4;   // spelarens egna flyttar (och ångra) låter svagare än utdelningen
+  function render(anim = {}) {
+    const delay = anim.delay || {};
+    const quiet = board.classList.contains('noanim');
+    const set = (id, x, y, z, cls) => {
+      const e = els[id];
+      // Ett kort som flyttas låter när det landar: efter sin fördröjning och ca 60 % av rörelsen
+      if (!quiet && (Math.abs(parseFloat(e.style.left) - x) > 8 || Math.abs(parseFloat(e.style.top) - y) > 8))
+        CardSounds.place(((delay[id] || 0) + 180) * SPEED, anim.vol ?? 1);
+      put(e, x, y); e.style.zIndex = z;
+      e.className = cls; e.style.transform = ''; e.style.transitionDelay = (delay[id] || 0) * SPEED + 'ms';
+    };
+    st.found.forEach((f, s) => f.forEach((id, j) => set(id, M.fx[s], M.top, 100 + j, 'card up')));
+    st.tab.forEach((col, c) => {
+      const [dn, up] = steps(col);
+      let y = M.ty;
+      col.forEach((x, k) => { set(x.id, M.xs[c], y, 200 + k, x.up ? 'card up' : 'card'); y += x.up ? up : dn; });
+    });
+    updateHud();
+  }
+  const fmt = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  function updateHud() {
+    $('score').textContent = st.score;
+    $('moves').textContent = st.moves;
+    $('time').textContent = fmt(st.time);
+    const c = homed();
+    $('cleared').textContent = c + '/52';
+    $('ring').style.setProperty('--p', c / 52 * 100);
+    $('b-undo').disabled = !hist.length || st.won;
+  }
+  let toastTimer = 0;
+  function toast(msg) {
+    const el = $('toast');
+    el.textContent = msg; el.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+  }
+  function shake(list) {
+    list.forEach(el => { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); });
+    setTimeout(() => list.forEach(el => el.classList.remove('shake')), 350);
+  }
+
+  // ---------- Touch / mus ----------
+  // Tryck på ett kort så flyttas det (med korten ovanpå) dit det passar bäst, eller dra det dit du vill
+  const clearTarget = () => board.querySelectorAll('.target').forEach(e => e.classList.remove('target'));
+  // Var släpps kortet? En grundhög om kortet ligger över den, annars kolumnen under kortets mitt.
+  function dropAt(g) {
+    const r = g.el.getBoundingClientRect(), br = board.getBoundingClientRect();
+    const cx = r.left - br.left + r.width / 2, cy = r.top - br.top + r.height / 2;
+    if (g.ids.length === 1 && cy < M.top + M.ch * 1.1) {
+      const s = suit(g.ids[0]);
+      if (Math.abs(cx - (M.fx[s] + M.cw / 2)) < M.cw * .9 && toFound(g.ids[0])) return 'found';
+    }
+    let bestC = null, dist = Infinity;
+    for (let c = 0; c < 7; c++) {
+      const d = Math.abs(cx - (M.xs[c] + M.cw / 2));
+      if (d < dist && d < M.cw * .9 && cy > M.ty - M.ch * .5 && toTab(g.ids[0], c)) { dist = d; bestC = c; }
+    }
+    return bestC;
+  }
+  const targetEl = (to, id) => to === 'found' ? $('f' + suit(id)) : st.tab[to].length ? els[last(st.tab[to]).id] : $('t' + to);
+  board.addEventListener('pointerdown', e => {
+    if (drag || !st || st.won || finishing) return;
+    if (relayout()) return;   // skärmen har vridits utan att vi märkt det: rätta layouten först
+    const el = e.target.closest('.card');
+    if (!el) return;
+    const w = where(+el.dataset.id);
+    if (!w) { shake([el]); return; }
+    drag = { ids: w.ids, el, els: w.ids.map(id => els[id]), pid: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, moving: false };
+  });
+  window.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.pid) return;
+    drag.dx = e.clientX - drag.x0; drag.dy = e.clientY - drag.y0;
+    if (!drag.moving && Math.hypot(drag.dx, drag.dy) < 8) return;
+    if (!drag.moving) { drag.moving = true; drag.els.forEach((x, i) => { x.classList.add('dragging'); x.style.zIndex = 5000 + i; }); clearHintMarks(); }
+    drag.els.forEach(x => x.style.transform = `translate(${drag.dx}px,${drag.dy}px)`);
+    clearTarget();
+    const to = dropAt(drag);
+    if (to !== null) targetEl(to, drag.ids[0]).classList.add('target');
+  });
+  function endDrag(e, cancel) {
+    if (!drag || e.pointerId !== drag.pid) return;
+    const g = drag; drag = null; clearTarget();
+    if (g.moving) {
+      const to = cancel ? null : dropAt(g);
+      // Flytta in fingrets förskjutning i left/top innan animationen, så att den startar där kortet släpptes (som i Spider).
+      // Klassen dragging (ingen animation) får sitta kvar tills render() sätter om klassen, annars animeras flytten
+      // av left/top från kortets gamla plats.
+      g.els.forEach(x => {
+        x.style.left = parseFloat(x.style.left) + g.dx + 'px'; x.style.top = parseFloat(x.style.top) + g.dy + 'px';
+        x.style.transform = '';
+      });
+      void board.offsetWidth;
+      if (to !== null) move(g.ids, to); else render({ vol: MOVE_VOL });
+    } else if (!cancel) {
+      const to = best(g.ids);
+      if (to !== null) move(g.ids, to); else shake(g.els);
+    }
+    setTimeout(relayout, 400);   // om skärmen vreds under draget
+  }
+  window.addEventListener('pointerup', e => endDrag(e, false));
+  window.addEventListener('pointercancel', e => endDrag(e, true));
+
+  // ---------- Knappar & dialoger ----------
+  function close(id) { $(id).classList.remove('open'); paused = !!document.querySelector('.overlay.open'); }
+  const levelName = variant => t(variant === 'russian' ? 'russian' : 'classic');
+  // Slutdialogernas knappar: rubrik plus en rad om vad som händer, och Nytt spel visar inställningarna det startas med
+  const btnText = (title, sub) => `${title}<small>${sub}</small>`;
+  function fillEnd() {
+    const next = btnText(t('newGame'), levelName(settings.variant)), change = btnText(t('changeGame'), t('golfChangeSub'));
+    $('w-change').innerHTML = $('lo-change').innerHTML = change;
+    $('w-new').innerHTML = $('lo-new').innerHTML = next;
+    $('lo-undo').innerHTML = btnText(t('undo'), t('undoSub'));
+  }
+  function open(id) { if (id === 'win' || id === 'lost') fillEnd(); paused = true; $(id).classList.add('open'); }
+  const inProgress = () => st && !st.won && st.moves > 0 && !stuck();
+  function refreshLobby() {
+    document.querySelectorAll('#lobby .seg').forEach(seg => {
+      const v = String(settings[seg.dataset.key]);
+      seg.querySelectorAll('.btn').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+    });
+    $('rules').textContent = t('ykRules') + ' ' + t(settings.variant === 'russian' ? 'ykRussianRules' : 'ykClassicRules');
+    const s = loadStats()[settings.variant];
+    $('st-played').textContent = s.played; $('st-won').textContent = s.won; $('st-best').textContent = s.best || '–';
+    const going = inProgress();
+    $('l-resume').style.display = going ? '' : 'none';
+    if (going) $('l-resume').innerHTML = `${t('resume')}<small>${levelName(st.variant)} · ${t('klonProgress', homed())}</small>`;
+    $('l-play').className = going ? 'btn' : 'btn gold';
+    $('l-play').innerHTML = `${going ? t('newGame') : t('play')}<small>${levelName(settings.variant)}</small>`;
+  }
+  function showLobby() { refreshLobby(); open('lobby'); }
+  document.querySelectorAll('#lobby .seg').forEach(seg => seg.addEventListener('click', e => {
+    const b = e.target.closest('.btn');
+    if (!b) return;
+    settings[seg.dataset.key] = b.dataset.v;
+    store.set(SKEY, settings);
+    refreshLobby();
+  }));
+  $('b-undo').onclick = undo;
+  $('b-hint').onclick = hint;
+  if (!HINTS) $('b-hint').classList.add('off');
+  $('b-menu').onclick = showLobby;
+  $('b-new').onclick = () => { if (inProgress()) open('confirm'); else newGame(); };
+  $('l-resume').onclick = () => close('lobby');
+  $('l-play').onclick = () => { if (inProgress()) open('confirm'); else { close('lobby'); newGame(); } };
+  $('l-home').onclick = () => { save(); location.href = 'games.html'; };
+  $('c-no').onclick = () => close('confirm');
+  $('c-yes').onclick = () => { close('confirm'); close('lobby'); newGame(); };
+  $('w-new').onclick = () => { close('win'); newGame(); };
+  $('lo-undo').onclick = () => { close('lost'); undo(); };
+  $('lo-new').onclick = () => { close('lost'); newGame(); };
+  $('lo-change').onclick = () => { close('lost'); showLobby(); };
+  $('w-change').onclick = () => { close('win'); showLobby(); };
+  document.addEventListener('keydown', e => {
+    if (paused) return;
+    if (e.key === 'z' || e.key === 'Z') undo();
+    else if (e.key === 'h') hint();
+  });
+
+  setInterval(() => {
+    if (!st || st.won || paused || document.hidden || st.moves === 0) return;
+    st.time++;
+    $('time').textContent = fmt(st.time);
+    if (st.time % 5 === 0) save();
+  }, 1000);
+  window.addEventListener('pagehide', save);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+  // Räkna om layouten när skärmen ändrar storlek. iOS skickar inte alltid resize vid vridning
+  // (t.ex. om iPaden vreds medan appen låg i bakgrunden), så vi lyssnar på flera håll.
+  function relayout() {
+    if (drag || !M || (M.W === board.clientWidth && M.H === board.clientHeight)) return false;
+    layout(); if (st) instant(() => render());
+    return true;
+  }
+  const relayoutSoon = () => { relayout(); requestAnimationFrame(relayout); setTimeout(relayout, 350); };
+  window.addEventListener('resize', relayoutSoon);
+  window.addEventListener('orientationchange', relayoutSoon);
+  window.addEventListener('pageshow', relayoutSoon);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) relayoutSoon(); });
+  if (window.ResizeObserver) new ResizeObserver(relayout).observe(board);
+
+  // ---------- Start ----------
+  layout();
+  const saved = store.get('yukon.game');
+  if (saved && saved.st && saved.st.deck && saved.st.deck.length === 52 && saved.st.tab && !saved.st.won && saved.st.moves > 0) {
+    st = saved.st; hist = saved.hist || [];
+    buildCards();
+    instant(() => render());
+    if (canFinish()) autoFinish();
+  }
+  showLobby();
+
+  // Offline-stöd (kräver https eller localhost)
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>

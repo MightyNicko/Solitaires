@@ -21,11 +21,22 @@
     { id: 'klondike', name: t('klondike'), icon: '♣︎', url: 'klondike.html', statsKey: 'klondike.stats', gameKey: 'klondike.game', settingsKey: 'klondike.settings',
       levels: [1, 3].flatMap(d => [0, 3].map(p => ({ key: d + '-' + p, label: klonLevel(d, p) }))),
       sub: (st, s) => st ? t('klonProgress', st.found.reduce((n, f) => n + f.length, 0)) : klonLevel(s.draw || 1, s.passes ?? 0) },
+    { id: 'freecell', name: t('freecell'), icon: '▦︎', url: 'freecell.html', statsKey: 'freecell.stats', gameKey: 'freecell.game', settingsKey: 'freecell.settings',
+      levels: ['4', '2'].map(n => ({ key: n, label: t('cellsN', +n) })),
+      sub: (st, s) => st ? t('klonProgress', st.found.reduce((n, f) => n + f.length, 0)) : t('cellsN', s.cells || 4) },
+    { id: 'tripeaks', name: t('tripeaks'), icon: '▲︎', url: 'tripeaks.html', statsKey: 'tripeaks.stats', gameKey: 'tripeaks.game', settingsKey: 'tripeaks.settings',
+      levels: ['classic', 'wrap'].map(v => ({ key: v, label: t(v) })),
+      sub: (st, s) => st ? t('pyrProgress', st.peaks.filter(x => x === null).length) : t(s.variant === 'wrap' ? 'wrap' : 'classic') },
+    { id: 'yukon', name: t('yukon'), icon: '♦︎', url: 'yukon.html', statsKey: 'yukon.stats', gameKey: 'yukon.game', settingsKey: 'yukon.settings',
+      levels: ['classic', 'russian'].map(v => ({ key: v, label: t(v) })),
+      sub: (st, s) => st ? t('klonProgress', st.found.reduce((n, f) => n + f.length, 0)) : t(s.variant === 'russian' ? 'russian' : 'classic') },
+    { id: 'forty', name: t('fortyThieves'), icon: '⚔︎', url: 'forty.html', statsKey: 'forty.stats', gameKey: 'forty.game', settingsKey: 'forty.settings',
+      levels: ['1', '2'].map(n => ({ key: n, label: t('passes', +n) })),
+      sub: (st, s) => st ? t('ftProgress', st.found.reduce((n, f) => n + f.length, 0)) : t('passes', s.passes || 1) },
   ];
   // Platshållare som fyller ut spelsidan till hela rader. Bilden ritas som patiensen med samma id.
   const SOON = [
-    { id: 'freecell', name: 'FreeCell' }, { id: 'tripeaks', name: 'TriPeaks' },
-    { id: 'forty', name: t('fortyThieves') }, { id: 'yukon', name: 'Yukon' }, { id: 'scorpion', name: t('scorpion') },
+    { id: 'scorpion', name: t('scorpion') },
   ];
   window.GAMES = GAMES;
   window.SOON = SOON;
