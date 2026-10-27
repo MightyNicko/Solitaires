@@ -27,7 +27,7 @@
       confirmTap: 'Tap again to confirm',
       // Spelsidan
       playSub: 'Choose a game', soon: 'Coming soon', allGames: '‹ All games',
-      klondike: 'Klondike', fortyThieves: 'Forty Thieves', scorpion: 'Scorpion',
+      spider: 'Spider', pyramid: 'Pyramid', klondike: 'Klondike', fortyThieves: 'Forty Thieves', scorpion: 'Scorpion',
       // Spider
       score: 'Score', moves: 'Moves', time: 'Time',
       menu: 'Menu', undo: 'Undo', deal: n => `Deal · ${n}`, hint: 'Hint', new: 'New',
@@ -82,7 +82,7 @@
       resetGames: 'Radera sparade spel', resetGamesDone: 'Sparade spel är raderade',
       confirmTap: 'Tryck igen för att bekräfta',
       playSub: 'Välj patiens', soon: 'Kommer snart', allGames: '‹ Alla spel',
-      klondike: 'Harpan', fortyThieves: 'Fyrtio rövare', scorpion: 'Skorpionen',
+      spider: 'Spindelharpan', pyramid: 'Pyramiden', klondike: 'Harpan', fortyThieves: 'Fyrtio rövare', scorpion: 'Skorpionen',
       score: 'Poäng', moves: 'Drag', time: 'Tid',
       menu: 'Meny', undo: 'Ångra', deal: n => `Ge · ${n}`, hint: 'Tips', new: 'Ny',
       difficulty: 'Svårighetsgrad', tapMove: 'Tryck på kort för att flytta',

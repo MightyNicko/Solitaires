@@ -102,6 +102,8 @@
   .lobby .medal { width:72px; height:72px; margin:0 auto 12px; border-radius:50%; display:grid; place-items:center; font-size:40px; color:var(--gold);
                   background:radial-gradient(circle at 40% 30%,#2e3a75,#141a35 70%); border:3px solid var(--gold);
                   box-shadow:0 0 0 5px rgba(245,213,138,.15), 0 0 26px rgba(245,213,138,.35); }
+  /* Symbolen i medaljen är en SVG-figur (Flagga på green), ritad med mitten i (24, 24) så att den hamnar mitt i cirkeln */
+  .lobby .medal svg { width:40px; height:40px; display:block; overflow:visible; }
   .lobby h2 { margin:0; font-size:26px; letter-spacing:.24em; text-indent:.24em; text-transform:uppercase; }
   .lobby .orn { color:var(--gold); font-size:11px; letter-spacing:.5em; text-indent:.5em; text-transform:uppercase; opacity:.7; margin:6px 0 10px; }
   .lobby .label { margin-top:16px; }
@@ -111,6 +113,12 @@
     .ring { width:46px; height:46px; top:calc(env(safe-area-inset-top) + 56px); left:calc(env(safe-area-inset-left) + 8px); } .ring span { width:36px; height:36px; font-size:12px; }
     .hud { gap:10px; padding:7px 18px; font-size:9px; top:calc(env(safe-area-inset-top) + 12px); } .hud > * { gap:10px; } .hud .ttl { gap:8px; } .hud .ttl span { font-size:15px; letter-spacing:.3em; margin-right:-.3em; } .hud b { font-size:13px; margin-left:4px; }
     .dock { gap:6px; padding:7px 9px; bottom:calc(env(safe-area-inset-bottom) + 10px); } .dock button { width:52px; height:50px; font-size:9px; } .dock button.deal { width:70px; }
+  }
+
+  /* Riktigt smal skärm: långa spelnamn (Spindelharpan) får tätare bokstäver så att poängraden ryms */
+  @media (max-width:440px) {
+    .hud { gap:8px; padding:7px 14px; } .hud > * { gap:8px; } .hud .ttl { gap:6px; }
+    .hud .ttl span { font-size:14px; letter-spacing:.14em; margin-right:-.14em; }
   }
 
   /* iOS/iPadOS 27 suddar till överkanten i hemskärmsappar. Ett fast element överst (minst 90 % brett,
@@ -156,7 +164,7 @@
 <div class="toast" id="toast"></div>
 
 <div class="overlay lobby" id="lobby"><div class="panel">
-  <div class="medal">⚑&#xFE0E;</div>
+  <div class="medal"><svg viewBox="0 0 48 48" aria-hidden="true"><line x1="21" y1="7" x2="21" y2="38" stroke="#f5d58a" stroke-width="2.4" stroke-linecap="round"/><path fill="#f5d58a" d="M22 7l14 5.5L22 18z"/><ellipse cx="24" cy="39.5" rx="11" ry="3" fill="none" stroke="#f5d58a" stroke-width="2"/></svg></div>
   <h2>Golf</h2>
   <div class="orn">◆ Solitaire ◆</div>
   <p class="rules" id="rules"></p>

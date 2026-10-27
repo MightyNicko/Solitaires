@@ -102,6 +102,8 @@
   .lobby .medal { width:72px; height:72px; margin:0 auto 12px; border-radius:50%; display:grid; place-items:center; font-size:40px; color:var(--gold);
                   background:radial-gradient(circle at 40% 30%,#2e3a75,#141a35 70%); border:3px solid var(--gold);
                   box-shadow:0 0 0 5px rgba(245,213,138,.15), 0 0 26px rgba(245,213,138,.35); }
+  /* Symbolen i medaljen är en SVG-figur (Spindel), ritad med mitten i (24, 24) så att den hamnar mitt i cirkeln */
+  .lobby .medal svg { width:40px; height:40px; display:block; overflow:visible; }
   .lobby h2 { margin:0; font-size:26px; letter-spacing:.24em; text-indent:.24em; text-transform:uppercase; }
   .lobby .orn { color:var(--gold); font-size:11px; letter-spacing:.5em; text-indent:.5em; text-transform:uppercase; opacity:.7; margin:6px 0 10px; }
   .lobby .label { margin-top:16px; }
@@ -111,6 +113,12 @@
     .ring { width:46px; height:46px; top:calc(env(safe-area-inset-top) + 56px); left:calc(env(safe-area-inset-left) + 8px); } .ring span { width:36px; height:36px; font-size:12px; }
     .hud { gap:10px; padding:7px 18px; font-size:9px; top:calc(env(safe-area-inset-top) + 12px); } .hud > * { gap:10px; } .hud .ttl { gap:8px; } .hud .ttl span { font-size:15px; letter-spacing:.3em; margin-right:-.3em; } .hud b { font-size:13px; margin-left:4px; }
     .dock { gap:6px; padding:7px 9px; bottom:calc(env(safe-area-inset-bottom) + 10px); } .dock button { width:52px; height:50px; font-size:9px; } .dock button.deal { width:70px; }
+  }
+
+  /* Riktigt smal skärm: långa spelnamn (Spindelharpan) får tätare bokstäver så att poängraden ryms */
+  @media (max-width:440px) {
+    .hud { gap:8px; padding:7px 14px; } .hud > * { gap:8px; } .hud .ttl { gap:6px; }
+    .hud .ttl span { font-size:14px; letter-spacing:.14em; margin-right:-.14em; }
   }
 
   /* iOS/iPadOS 27 suddar till överkanten i hemskärmsappar. Ett fast element överst (minst 90 % brett,
@@ -127,7 +135,7 @@
 <div class="remove-blur" aria-hidden="true"></div>
 <div id="board">
   <div class="ring" id="ring"><span id="sets">0/8</span></div>
-  <div class="hud"><div class="l"><span><em data-i18n="score">Score</em><b id="score">500</b></span><span><em data-i18n="moves">Moves</em><b id="moves">0</b></span></div><div class="ttl"><span>Spider</span></div><div class="r"><span><em data-i18n="time">Time</em><b id="time">0:00</b></span></div></div>
+  <div class="hud"><div class="l"><span><em data-i18n="score">Score</em><b id="score">500</b></span><span><em data-i18n="moves">Moves</em><b id="moves">0</b></span></div><div class="ttl"><span data-i18n="spider">Spider</span></div><div class="r"><span><em data-i18n="time">Time</em><b id="time">0:00</b></span></div></div>
   <div class="dock">
     <button id="b-menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span data-i18n="menu">Menu</span></button>
     <button id="b-undo"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span data-i18n="undo">Undo</span></button>
@@ -139,8 +147,8 @@
 <div class="toast" id="toast"></div>
 
 <div class="overlay lobby" id="lobby"><div class="panel">
-  <div class="medal">♠&#xFE0E;</div>
-  <h2>Spider</h2>
+  <div class="medal"><svg viewBox="0 0 48 48" aria-hidden="true"><g fill="#f5d58a"><ellipse cx="24" cy="19" rx="6.5" ry="8"/><circle cx="24" cy="31" r="4.5"/></g><g fill="none" stroke="#f5d58a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 20 11 13 8 17M19 24 9 23 6 29M20 29 11 32 9 39M21 33 15 38 14 42"/><path d="M29 20 37 13 40 17M29 24 39 23 42 29M28 29 37 32 39 39M27 33 33 38 34 42"/></g></svg></div>
+  <h2 data-i18n="spider">Spider</h2>
   <div class="orn">◆ Solitaire ◆</div>
   <div class="label" data-i18n="difficulty">Difficulty</div>
   <div class="seg" data-key="suits"><button class="btn" data-v="1"></button><button class="btn" data-v="2"></button><button class="btn" data-v="4"></button></div>
