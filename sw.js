@@ -2,7 +2,7 @@
 // Online hämtas alltid senaste versionen från nätet (och cachen uppdateras).
 // Cachen används bara offline, eller om nätet inte svarar inom TIMEOUT.
 // Byt CACHE när filer läggs till eller tas bort.
-const CACHE = 'solitaires-v12';
+const CACHE = 'solitaires-v13';
 const TIMEOUT = 3000;
 const FILES = ['./', './index.html', './games.html', './games.js', './spider.html', './pyramid.html', './cards.css', './cards.js', './i18n.js', './sounds.js', './sounds/card-place-1.wav', './sounds/card-place-2.wav', './sounds/card-place-3.wav', './sounds/card-place-4.wav', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 

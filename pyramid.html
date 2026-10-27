@@ -22,7 +22,7 @@
   body { color:var(--ink); font-family:-apple-system,"Segoe UI",system-ui,sans-serif; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
   /* Spelplanen täcker hela skärmen. Överkanten har samma färg som statusfältet (theme-color #10152e). */
   #board { position:fixed; top:0; left:0; right:0; height:var(--app-h,100%); touch-action:none;
-           background:linear-gradient(180deg,#10152e 0,rgba(16,21,46,0) 90px), radial-gradient(circle at 50% 40%,#2a3566 0%,#141a35 55%,#0b0f22 100%); }
+           background:linear-gradient(180deg,#10152e env(safe-area-inset-top),rgba(16,21,46,0) calc(env(safe-area-inset-top) + 90px)), radial-gradient(circle at 50% 40%,#2a3566 0%,#141a35 55%,#0b0f22 100%); }
   #board.noanim .card { transition:none !important; }
 
   /* HUD */
@@ -108,7 +108,7 @@
   .lobby .statgrid { margin-bottom:16px; }
 
   @media (max-width:640px) {
-    .ring { width:46px; height:46px; top:calc(env(safe-area-inset-top) + 8px); left:8px; } .ring span { width:36px; height:36px; font-size:12px; }
+    .ring { width:46px; height:46px; top:calc(env(safe-area-inset-top) + 56px); left:calc(env(safe-area-inset-left) + 8px); } .ring span { width:36px; height:36px; font-size:12px; }
     .hud { gap:10px; padding:7px 18px; font-size:9px; top:calc(env(safe-area-inset-top) + 12px); } .hud > * { gap:10px; } .hud .ttl { gap:8px; } .hud .ttl span { font-size:15px; letter-spacing:.3em; margin-right:-.3em; } .hud b { font-size:13px; margin-left:4px; }
     .dock { gap:6px; padding:7px 9px; bottom:calc(env(safe-area-inset-bottom) + 10px); } .dock button { width:52px; height:50px; font-size:9px; } .dock button.deal { width:70px; }
   }
@@ -118,7 +118,7 @@
      gör att remsan själv inte ritar något. Färgen är densamma som theme-color och bakgrundens överkant. */
   .remove-blur { display:none; }
   @media (display-mode: standalone) {
-    .remove-blur { display:block; position:fixed; inset:0 0 auto; height:11px; z-index:2147483647; pointer-events:none;
+    .remove-blur { display:block; position:fixed; inset:0 0 auto; height:max(11px, env(safe-area-inset-top)); z-index:2147483647; pointer-events:none;
                    background:#10152e; -webkit-background-clip:text; background-clip:text; }
   }
   /* Pyramid: täckta kort tonas ned, valt kort lyser, talong och kasthög har etiketter */

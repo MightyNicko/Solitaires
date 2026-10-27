@@ -23,7 +23,7 @@
   body.leaving { opacity:0; }
   /* Samma bakgrund, stjärnor och ram som startsidan. Överkanten har samma färg som statusfältet (theme-color #10152e). */
   #app { position:fixed; inset:0; overflow:hidden;
-         background:linear-gradient(180deg,#10152e 0,rgba(16,21,46,0) 90px), radial-gradient(circle at 50% 38%,#2a3566 0%,#141a35 50%,#0b0f22 100%); }
+         background:linear-gradient(180deg,#10152e env(safe-area-inset-top),rgba(16,21,46,0) calc(env(safe-area-inset-top) + 90px)), radial-gradient(circle at 50% 38%,#2a3566 0%,#141a35 50%,#0b0f22 100%); }
   .stars { position:absolute; inset:0; pointer-events:none; }
   .star { position:absolute; width:var(--s); height:var(--s); margin:calc(var(--s) / -2) 0 0 calc(var(--s) / -2); border-radius:50%;
           background:#fff; box-shadow:0 0 calc(var(--s) * 2) rgba(255,255,255,.7); animation:twinkle var(--t) ease-in-out var(--d) infinite; }
@@ -48,6 +48,17 @@
   .back { all:unset; position:absolute; z-index:2; top:calc(env(safe-area-inset-top) + max(5 * var(--u), 36px)); left:calc(env(safe-area-inset-left) + max(10 * var(--u), 70px));
           padding:8px 16px; border:1px solid rgba(245,213,138,.35); border-radius:20px; font-size:15px; cursor:pointer; touch-action:manipulation; background:rgba(20,26,53,.5); }
   .back:active { transform:scale(.96); }
+  /* Smal skärm (telefon på höjden): tillbakaknappen blir en rund pil i ramens hörn, så den inte hamnar på rubriken */
+  @media (max-width:600px) {
+    .back { left:calc(env(safe-area-inset-left) + 26px); width:40px; height:40px; padding:0; border-radius:50%; font-size:0; text-align:center; }
+    .back::before { content:"‹"; display:block; font-size:24px; line-height:37px; }
+  }
+  /* Låg skärm (telefon på bredden): mindre rubrik utan ornament, så rutorna får mer höjd */
+  @media (max-height:500px) {
+    .head, .back { top:calc(env(safe-area-inset-top) + 24px); }
+    .head h1 { font-size:24px; }
+    .head .orn { display:none; }
+  }
 
   /* Rutorna: storleken räknas fram i layout() så att 8 spel ryms som 2 × 4 i liggande läge */
   .grid { position:absolute; left:0; right:0; display:grid; place-content:center; overflow:auto; -webkit-overflow-scrolling:touch; }
@@ -59,8 +70,8 @@
   .tile.soon { cursor:default; }
   .tile .pic { position:absolute; left:0; right:0; top:0; overflow:hidden; background:radial-gradient(circle at 50% 40%,#2a3566,#141a35 75%); border-bottom:1px solid rgba(245,213,138,.3); }
   .tile .txt { position:absolute; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:0 12px; text-align:center; }
-  .tile .nm { font:400 22px Georgia,serif; color:var(--gold); letter-spacing:.2em; text-indent:.2em; text-transform:uppercase; white-space:nowrap; }
-  .tile .sb { font-size:12.5px; opacity:.75; }
+  .tile .nm { font:400 var(--nm,22px) Georgia,serif; color:var(--gold); letter-spacing:.2em; text-indent:.2em; text-transform:uppercase; white-space:nowrap; }
+  .tile .sb { font-size:var(--sb,12.5px); line-height:1.3; opacity:.75; }
   .tile .go { margin-top:4px; padding:5px 16px; border-radius:12px; font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase;
               background:linear-gradient(180deg,var(--gold),var(--gold2)); color:#1b1b2e; }
   .tile.soon .nm { opacity:.55; }
@@ -82,7 +93,7 @@
      gör att remsan själv inte ritar något. Färgen är densamma som theme-color och bakgrundens överkant. */
   .remove-blur { display:none; }
   @media (display-mode: standalone) {
-    .remove-blur { display:block; position:fixed; inset:0 0 auto; height:11px; z-index:2147483647; pointer-events:none;
+    .remove-blur { display:block; position:fixed; inset:0 0 auto; height:max(11px, env(safe-area-inset-top)); z-index:2147483647; pointer-events:none;
                    background:#10152e; -webkit-background-clip:text; background-clip:text; }
   }
 </style>
@@ -168,26 +179,36 @@
     const cols = land ? 4 : 2, rows = total / cols;
     const top = $('head').getBoundingClientRect().bottom + 24;
     const fr = document.querySelector('.frame').getBoundingClientRect();
-    const bottom = fr.bottom - 30, side = Math.max(W * .06, 40) + fr.left;
+    // En smal telefon får mindre sidmarginal och högre rutor, eftersom bredden tar slut långt före höjden
+    const narrow = W < 600, ratio = narrow ? 1.35 : 1.2;
+    const bottom = fr.bottom - 30, side = narrow ? fr.left + 16 : Math.max(W * .06, 40) + fr.left;
     const gap = Math.max(18, Math.min(30, W * .024));
-    const aw = W - 2 * side, ah = bottom - top, sizeRows = Math.max(rows, 2);
-    const tw = Math.floor(Math.min((aw - (cols - 1) * gap) / cols, (ah - (sizeRows - 1) * gap) / sizeRows / 1.2));
-    const th = Math.round(tw * 1.2), txt = Math.round(Math.min(118, th * .42)), ph = th - txt;
+    // På en låg skärm (telefon på bredden) räcker höjden bara till en rad. Fler rader rullas då fram.
+    const aw = W - 2 * side, ah = bottom - top, sizeRows = H < 500 ? 1 : Math.max(rows, 2);
+    const tw = Math.floor(Math.min((aw - (cols - 1) * gap) / cols, (ah - (sizeRows - 1) * gap) / sizeRows / ratio));
+    // Texten krymper med rutan. Textytan får den höjd texten behöver (två rader undertext på smala rutor), bilden resten.
+    const nm = Math.max(14, Math.min(22, tw * .1)), sb = Math.max(11, Math.min(12.5, tw * .056));
+    const need = nm + (tw < 190 ? 2 : 1) * sb * 1.3 + 60;
+    const th = Math.round(tw * ratio), txt = Math.round(Math.min(th * .6, Math.max(Math.min(118, th * .42), need))), ph = th - txt;
+    // Långa namn (FREECELL, FYRTIO RÖVARE) krymps så att de ryms på rutans bredd
+    const nmFit = name => `font-size:${Math.min(nm, (tw - 20) / (name.length * .95)).toFixed(1)}px`;
     const grid = $('grid');
     Object.assign(grid.style, { top: top + 'px', height: (bottom - top) + 'px', gridTemplateColumns: `repeat(${cols}, ${tw}px)`, gap: gap + 'px' });
+    grid.style.setProperty('--sb', sb + 'px');
     grid.innerHTML = items.map((g, i) => {
       const delay = `animation-delay:${i * 60}ms`;
       if (g.soon) return `<div class="tile soon" style="width:${tw}px;height:${th}px;${delay}"><div class="pic" style="height:${ph}px">${mini(g.id, tw, ph)}</div>
-          <div class="txt" style="height:${txt}px"><div class="nm">${g.name}</div><div class="sb">${t('soon')}</div></div><div class="rib">${t('soon')}</div></div>`;
+          <div class="txt" style="height:${txt}px"><div class="nm" style="${nmFit(g.name)}">${g.name}</div><div class="sb">${t('soon')}</div></div><div class="rib">${t('soon')}</div></div>`;
       const saved = store.get(g.gameKey), st = saved && saved.st, going = st && !st.won && st.moves > 0;
       const sub = going ? `${t('continue')} · ${g.sub(st)}` : g.sub(null, store.get(g.settingsKey) || {});
       return `<button class="tile" data-url="${g.url}" style="width:${tw}px;height:${th}px;${delay}"><div class="pic" style="height:${ph}px">${mini(g.id, tw, ph)}</div>
-          <div class="txt" style="height:${txt}px"><div class="nm">${g.name}</div><div class="sb">${sub}</div><div class="go">${going ? t('continue') : t('play')}</div></div></button>`;
+          <div class="txt" style="height:${txt}px"><div class="nm" style="${nmFit(g.name)}">${g.name}</div><div class="sb">${sub}</div><div class="go">${going ? t('continue') : t('play')}</div></div></button>`;
     }).join('');
   }
   const go = url => { document.body.classList.add('leaving'); setTimeout(() => location.href = url, 220); };
   $('grid').addEventListener('click', e => { const b = e.target.closest('.tile[data-url]'); if (b) go(b.dataset.url); });
   $('back').onclick = () => go('./');
+  $('back').setAttribute('aria-label', t('home').replace('‹', '').trim());
 
   // Rita om när sidan byter storlek. Jämför sidans egna mått, inte innerWidth/innerHeight: under en vridning på iPad
   // ändras de före sidans mått, och då räknades rutorna fram med gamla mått. Räkna därför om några gånger under vridningen.

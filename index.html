@@ -22,7 +22,7 @@
   html, body { margin:0; height:var(--app-h,100%); overflow:hidden; overscroll-behavior:none; background:#0b0f22; }
   /* Hela appen täcker skärmen. Överkanten har samma färg som statusfältet (theme-color #10152e). */
   #app { position:fixed; top:0; left:0; right:0; height:var(--app-h,100%); overflow:hidden;
-         background:linear-gradient(180deg,#10152e 0,rgba(16,21,46,0) 90px), radial-gradient(circle at 50% 38%,#2a3566 0%,#141a35 50%,#0b0f22 100%); }
+         background:linear-gradient(180deg,#10152e env(safe-area-inset-top),rgba(16,21,46,0) calc(env(safe-area-inset-top) + 90px)), radial-gradient(circle at 50% 38%,#2a3566 0%,#141a35 50%,#0b0f22 100%); }
   body { color:var(--ink);
          font-family:-apple-system,"Segoe UI",system-ui,sans-serif; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
          transition:opacity .25s; }
@@ -165,7 +165,7 @@
      gör att remsan själv inte ritar något. Färgen är densamma som theme-color och bakgrundens överkant. */
   .remove-blur { display:none; }
   @media (display-mode: standalone) {
-    .remove-blur { display:block; position:fixed; inset:0 0 auto; height:11px; z-index:2147483647; pointer-events:none;
+    .remove-blur { display:block; position:fixed; inset:0 0 auto; height:max(11px, env(safe-area-inset-top)); z-index:2147483647; pointer-events:none;
                    background:#10152e; -webkit-background-clip:text; background-clip:text; }
   }
 </style>
@@ -189,7 +189,7 @@
     <button class="deco line" id="open-settings"><span data-i18n="settings">Settings</span><small data-i18n="settingsSub">Appearance &amp; data</small></button>
   </div>
 </main>
-<div class="version">v1.1.1026.2224</div>
+<div class="version">v1.1.1027.1740</div>
 </div>
 
 <div class="overlay" id="stats"><div class="panel wide">
