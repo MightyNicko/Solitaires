@@ -55,6 +55,11 @@
       golfRules: 'Move the top card of a column to the discard pile if it is one higher or one lower, regardless of suit. Draw a card when nothing fits. Clear all seven columns to win.',
       golfClassicRules: 'Nothing can be played on a king.', golfWrapRules: 'Ace and king connect: an ace goes on a king and a king on an ace.',
       golfProgress: n => `${n} of 35 played`, golfChangeSub: 'Choose variant', toastNoFitDraw: 'Nothing fits – draw a card',
+      // Harpan (Klondike)
+      klonRules: 'Build the columns down in alternating colours; only a king may go in an empty column. Build the four foundations up by suit from ace to king. Tap a card to move it where it fits best.',
+      klonWin: 'All cards are on the foundations!', klonLost: 'No move helps any more and the draw pile can no longer help.',
+      klonProgress: n => `${n} of 52 home`, klonChangeSub: 'Choose cards per draw and passes',
+      drawLabel: 'Cards per draw', drawCards: n => n === 1 ? 'Draw 1' : `Draw ${n}`, toastNoMoveDraw: 'No moves – draw a card',
     },
     sv: {
       on: 'På', off: 'Av', done: 'Klar', cancel: 'Avbryt',
@@ -102,6 +107,10 @@
       golfRules: 'Lägg det översta kortet i en kolumn på kasthögen om det är ett steg högre eller lägre, oavsett färg. Dra ett kort när inget passar. Töm alla sju kolumner för att vinna.',
       golfClassicRules: 'Inget får läggas på en kung.', golfWrapRules: 'Ess och kung hänger ihop: ess går på kung och kung på ess.',
       golfProgress: n => `${n} av 35 lagda`, golfChangeSub: 'Välj variant', toastNoFitDraw: 'Inget passar – dra ett kort',
+      klonRules: 'Bygg nedåt i kolumnerna med omväxlande röd och svart. Bara en kung får läggas i en tom kolumn. Bygg de fyra grundhögarna uppåt i samma färg från ess till kung. Tryck på ett kort så flyttas det dit det passar bäst.',
+      klonWin: 'Alla kort ligger på grundhögarna!', klonLost: 'Inget drag hjälper längre och draghögen kan inte hjälpa mer.',
+      klonProgress: n => `${n} av 52 klara`, klonChangeSub: 'Välj antal kort och varv',
+      drawLabel: 'Kort per dragning', drawCards: n => `Dra ${n}`, toastNoMoveDraw: 'Inga drag – dra ett kort',
     },
   };
 
