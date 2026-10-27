@@ -13,10 +13,13 @@
     { id: 'pyramid', name: 'Pyramid', icon: '▲︎', url: 'pyramid.html', statsKey: 'pyramid.stats', gameKey: 'pyramid.game', settingsKey: 'pyramid.settings',
       levels: ['classic', 'hidden'].flatMap(v => [1, 2, 0].map(n => ({ key: (v === 'hidden' ? 'h' : '') + n, label: pyrLevel(v, n) }))),
       sub: (st, s) => st ? t('pyrProgress', st.pyr.filter(x => x === null).length) : pyrLevel(s.variant, s.passes ?? 0) },
+    { id: 'golf', name: 'Golf', icon: '⚑︎', url: 'golf.html', statsKey: 'golf.stats', gameKey: 'golf.game', settingsKey: 'golf.settings',
+      levels: ['classic', 'wrap'].map(v => ({ key: v, label: t(v) })),
+      sub: (st, s) => st ? t('golfProgress', 35 - st.cols.reduce((n, c) => n + c.length, 0)) : t(s.variant === 'wrap' ? 'wrap' : 'classic') },
   ];
   // Platshållare som fyller ut spelsidan till hela rader. Bilden ritas som patiensen med samma id.
   const SOON = [
-    { id: 'klondike', name: t('klondike') }, { id: 'freecell', name: 'FreeCell' }, { id: 'golf', name: 'Golf' },
+    { id: 'klondike', name: t('klondike') }, { id: 'freecell', name: 'FreeCell' }, { id: 'tripeaks', name: 'TriPeaks' },
     { id: 'forty', name: t('fortyThieves') }, { id: 'yukon', name: 'Yukon' }, { id: 'scorpion', name: t('scorpion') },
   ];
   window.GAMES = GAMES;

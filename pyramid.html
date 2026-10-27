@@ -141,8 +141,8 @@
   <div class="slot stock" id="stock-slot"></div>
   <div class="slot" id="waste-slot"></div>
   <div class="badge" id="stock-n"></div>
-  <div class="plabel" id="stock-lbl" data-i18n="stock">Stock</div>
-  <div class="plabel" id="waste-lbl" data-i18n="waste">Waste</div>
+  <div class="plabel" id="stock-lbl" data-i18n="stock">Draw pile</div>
+  <div class="plabel" id="waste-lbl" data-i18n="waste">Discard pile</div>
   <div class="dock">
     <button id="b-menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span data-i18n="menu">Menu</span></button>
     <button id="b-undo"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span data-i18n="undo">Undo</span></button>
@@ -160,7 +160,7 @@
   <p class="rules" id="rules"></p>
   <div class="label" data-i18n="variant">Variant</div>
   <div class="seg" data-key="variant"><button class="btn" data-v="classic" data-i18n="classic">Classic</button><button class="btn" data-v="hidden" data-i18n="hiddenRows">Hidden rows</button></div>
-  <div class="label" data-i18n="passesLabel">Passes through the stock</div>
+  <div class="label" data-i18n="passesLabel">Passes through the draw pile</div>
   <div class="seg" data-key="passes"><button class="btn" data-v="1"></button><button class="btn" data-v="2"></button><button class="btn" data-v="0"></button></div>
   <div class="statgrid"><div><b id="st-played">0</b><span data-i18n="played">Played</span></div><div><b id="st-won">0</b><span data-i18n="won">Won</span></div><div><b id="st-best">–</b><span data-i18n="bestScore">Best score</span></div></div>
   <button class="btn gold" id="l-resume"></button>
@@ -182,7 +182,7 @@
 
 <div class="overlay" id="lost"><div class="panel end">
   <h2 data-i18n="lostTitle">No more moves</h2>
-  <p><span data-i18n="lostText">No pairs remain and the stock can no longer help.</span><br><span id="lost-text"></span></p>
+  <p><span data-i18n="lostText">No pairs remain and the draw pile can no longer help.</span><br><span id="lost-text"></span></p>
   <div class="row"><button class="btn" id="lo-undo"></button><button class="btn" id="lo-change"></button><button class="btn gold" id="lo-new"></button></div>
 </div></div>
 
