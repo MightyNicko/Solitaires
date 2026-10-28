@@ -12,136 +12,12 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>FreeCell Solitaire</title>
 <link rel="stylesheet" href="cards.css">
+<link rel="stylesheet" href="game.css">
 <script src="i18n.js"></script>
 <script src="cards.js"></script>
 <script src="sounds.js"></script>
+<script src="game.js"></script>
 <style>
-  :root { --gold:#f5d58a; --gold2:#c9a24a; --ink:#e9dfc4; --glass:rgba(255,255,255,.08); --glassb:rgba(255,255,255,.14); }
-  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html, body { margin:0; height:var(--app-h,100%); overflow:hidden; overscroll-behavior:none; background:#0b0f22; }
-  body { color:var(--ink); font-family:-apple-system,"Segoe UI",system-ui,sans-serif; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
-  /* Spelplanen täcker hela skärmen. Överkanten har samma färg som statusfältet (theme-color #10152e). */
-  #board { position:fixed; top:0; left:0; right:0; height:var(--app-h,100%); touch-action:none;
-           background:linear-gradient(180deg,#10152e env(safe-area-inset-top),rgba(16,21,46,0) calc(env(safe-area-inset-top) + 90px)), radial-gradient(circle at 50% 40%,#2a3566 0%,#141a35 55%,#0b0f22 100%); }
-  #board.noanim .card { transition:none !important; }
-
-  /* HUD */
-  @property --p { syntax:'<number>'; inherits:false; initial-value:0; }   /* så att ringen kan glida (transition:--p) */
-  .ring { position:absolute; top:calc(env(safe-area-inset-top) + 10px); left:calc(env(safe-area-inset-left) + 14px); width:58px; height:58px; border-radius:50%; z-index:2000;
-          background:conic-gradient(var(--gold) calc(var(--p,0) * 1%), rgba(255,255,255,.12) 0); display:grid; place-items:center; transition:--p .4s; }
-  .ring span { width:46px; height:46px; border-radius:50%; background:#141a35; display:grid; place-items:center; font-weight:700; font-size:15px; color:var(--gold); }
-  /* Poängraden överst: rundad som förut, spelets namn mellan två gulddiamanter, siffrorna på var sin sida */
-  .hud { position:absolute; top:calc(env(safe-area-inset-top) + 12px); left:50%; transform:translateX(-50%); z-index:2000;
-         display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:22px; padding:9px 28px; border-radius:40px; white-space:nowrap;
-         font-size:12px; line-height:1; letter-spacing:.12em; text-transform:uppercase; color:var(--ink);
-         background:linear-gradient(180deg,#1d2550,#141a35); border:1px solid rgba(245,213,138,.55); }
-  .hud > * { display:flex; align-items:center; gap:22px; }
-  .hud .l { justify-content:flex-end; } .hud .r { justify-content:flex-start; }
-  .hud span { display:flex; align-items:center; }
-  .hud .ttl { gap:12px; color:var(--gold); }
-  .hud .ttl::before, .hud .ttl::after { content:"◆"; font-size:9px; letter-spacing:0; }
-  .hud .ttl span { font:400 21px/1 Georgia,serif; letter-spacing:.42em; margin-right:-.42em; padding-top:2px; }
-  .hud em { font-style:normal; opacity:.85; }
-  .hud b { color:var(--gold); font-size:16px; margin-left:6px; letter-spacing:0; font-variant-numeric:tabular-nums; }
-
-  /* Docka */
-  .dock { position:absolute; bottom:calc(env(safe-area-inset-bottom) + 12px); left:50%; transform:translateX(-50%); display:flex; gap:12px; padding:9px 14px; border-radius:28px;
-          background:rgba(20,26,53,.9); border:1px solid var(--glassb); z-index:2000; }   /* tät bakgrund i stället för suddning: lättare att rita när kort rör sig under */
-  .dock button { all:unset; touch-action:manipulation; width:66px; height:56px; border-radius:18px; display:flex; flex-direction:column; align-items:center;
-                 justify-content:center; gap:3px; background:rgba(255,255,255,.06); color:var(--ink); cursor:pointer; font-size:10.5px;
-                 letter-spacing:.07em; text-transform:uppercase; transition:transform .1s, opacity .2s; }
-  .dock button svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
-  .dock button:active { transform:scale(.94); }
-  .dock button.deal { width:92px; background:linear-gradient(180deg,var(--gold),var(--gold2)); color:#1b1b2e; font-weight:700; }
-  .dock button:disabled { opacity:.35; cursor:default; }
-  .dock button.off { opacity:.35; }   /* avstängd i inställningarna, men går att trycka på */
-  .dock button.pulse { animation:pulse 1s 2; }
-  @keyframes pulse { 50% { box-shadow:0 0 0 4px var(--gold), 0 0 24px var(--gold); } }
-
-  /* Kort */
-  .slot { position:absolute; width:var(--cw); height:var(--ch); border-radius:calc(var(--cw) * .09); border:1px solid rgba(245,213,138,.35); background:rgba(255,255,255,.03); }
-  .card { position:absolute; left:0; top:0; width:var(--cw); height:var(--ch); border-radius:calc(var(--cw) * .09); cursor:pointer;
-          transition:translate var(--dur,.3s) cubic-bezier(.2,.8,.2,1), transform var(--dur,.3s) cubic-bezier(.2,.8,.2,1), opacity var(--dur,.3s);
-          box-shadow:0 3px 9px rgba(0,0,0,.45); }   /* fram- och baksidor: se cards.css */
-  .card.stock { opacity:0; pointer-events:none; }
-  .card.gone { opacity:0; transform:scale(.25); pointer-events:none; }
-  .card.dragging { transition:none; box-shadow:0 12px 26px rgba(0,0,0,.55); }
-  .card.hint, .slot.hint { box-shadow:0 0 0 3px var(--gold), 0 0 22px var(--gold); }
-  .card.target, .slot.target { box-shadow:0 0 0 3px rgba(245,213,138,.85), 0 0 14px rgba(245,213,138,.6); }
-  .card.shake { animation:shake .32s; }
-  @keyframes shake { 25% { transform:translateX(-5px); } 50% { transform:translateX(5px); } 75% { transform:translateX(-3px); } }   /* translate håller kortets plats */
-
-  /* Toast & dialoger */
-  .toast { position:fixed; left:50%; bottom:calc(104px + env(safe-area-inset-bottom)); transform:translate(-50%,20px); opacity:0; transition:.25s;
-           background:rgba(20,26,53,.92); border:1px solid var(--glassb); padding:10px 18px; border-radius:20px; font-size:15px; z-index:5000; pointer-events:none; white-space:nowrap; }
-  .toast.show { opacity:1; transform:translate(-50%,0); }
-  .overlay { position:fixed; top:0; left:0; right:0; height:var(--app-h,100%); background:rgba(5,8,20,.6); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); display:none; place-items:center; z-index:6000; padding:16px; }
-  .overlay.open { display:grid; }
-  .panel { width:min(420px,100%); background:linear-gradient(180deg,#1d2550,#141a35); border:1px solid rgba(245,213,138,.35); border-radius:24px;
-           padding:26px; text-align:center; box-shadow:0 30px 80px rgba(0,0,0,.6); }
-  .panel h2 { margin:0 0 6px; color:var(--gold); font-family:Georgia,serif; font-size:28px; font-weight:400; }
-  .panel p { margin:0 0 18px; opacity:.8; line-height:1.4; }
-  .btn { all:unset; display:block; box-sizing:border-box; width:100%; touch-action:manipulation; padding:14px; border-radius:14px; background:rgba(255,255,255,.08); margin-top:10px; cursor:pointer; font-size:16px; text-align:center; }
-  .btn.gold { background:linear-gradient(180deg,var(--gold),var(--gold2)); color:#1b1b2e; font-weight:700; }
-  .seg { display:flex; background:rgba(255,255,255,.06); border-radius:14px; padding:4px; margin:0 0 6px; }
-  .seg .btn { flex:1; margin:0; padding:10px 6px; font-size:14px; background:transparent; }
-  .seg .btn.on { background:var(--gold); color:#1b1b2e; font-weight:700; }
-  .statgrid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:16px 0 6px; font-size:12px; opacity:.85; }
-  .statgrid b { display:block; color:var(--gold); font-size:22px; font-family:Georgia,serif; font-weight:400; }
-  .row { display:flex; gap:10px; } .row .btn { flex:1; }
-  .label { font-size:12px; letter-spacing:.08em; text-transform:uppercase; opacity:.7; margin:4px 0 8px; }
-  .btn small { display:block; font-size:12px; font-weight:400; opacity:.75; margin-top:3px; }
-  .btn.link { background:transparent; font-size:14px; opacity:.8; }
-  /* Slutdialogerna (vinst och inga fler drag): bredare, och varje knapp säger vad som händer */
-  .panel.end { width:min(560px,100%); }
-  @media (max-width:480px) { .panel.end .row { flex-direction:column; gap:0; } }
-
-  /* Startskärmen: inställningar och Spela */
-  .lobby .panel { width:min(440px,100%); max-height:calc(var(--app-h,100vh) - 32px); overflow:auto; -webkit-overflow-scrolling:touch;
-                  border-radius:6px; border-color:rgba(245,213,138,.5);
-                  box-shadow:0 0 0 6px rgba(20,26,53,.9), 0 0 0 7px rgba(245,213,138,.25), 0 30px 80px rgba(0,0,0,.6); }
-  .lobby .medal { width:72px; height:72px; margin:0 auto 12px; border-radius:50%; display:grid; place-items:center; font-size:40px; color:var(--gold);
-                  background:radial-gradient(circle at 40% 30%,#2e3a75,#141a35 70%); border:3px solid var(--gold);
-                  box-shadow:0 0 0 5px rgba(245,213,138,.15), 0 0 26px rgba(245,213,138,.35); }
-  /* Symbolen i medaljen är en SVG-figur (Fyra celler), ritad med mitten i (24, 24) så att den hamnar mitt i cirkeln */
-  .lobby .medal svg { width:40px; height:40px; display:block; overflow:visible; }
-  .lobby h2 { margin:0; font-size:26px; letter-spacing:.24em; text-indent:.24em; text-transform:uppercase; }
-  .lobby .orn { color:var(--gold); font-size:11px; letter-spacing:.5em; text-indent:.5em; text-transform:uppercase; opacity:.7; margin:6px 0 10px; }
-  .lobby .label { margin-top:16px; }
-  .lobby .statgrid { margin-bottom:16px; }
-
-  @media (max-width:640px) {
-    .ring { width:46px; height:46px; top:calc(env(safe-area-inset-top) + 56px); left:calc(env(safe-area-inset-left) + 8px); } .ring span { width:36px; height:36px; font-size:12px; }
-    .hud { gap:10px; padding:7px 18px; font-size:9px; top:calc(env(safe-area-inset-top) + 12px); } .hud > * { gap:10px; } .hud .ttl { gap:8px; } .hud .ttl span { font-size:15px; letter-spacing:.3em; margin-right:-.3em; } .hud b { font-size:13px; margin-left:4px; }
-    .dock { gap:6px; padding:7px 9px; bottom:calc(env(safe-area-inset-bottom) + 10px); } .dock button { width:52px; height:50px; font-size:9px; } .dock button.deal { width:70px; }
-  }
-
-  /* Riktigt smal skärm: långa spelnamn (Spindelharpan) får tätare bokstäver så att poängraden ryms */
-  @media (max-width:440px) {
-    .hud { gap:8px; padding:7px 14px; } .hud > * { gap:8px; } .hud .ttl { gap:6px; }
-    .hud .ttl span { font-size:14px; letter-spacing:.14em; margin-right:-.14em; }
-  }
-
-  /* iOS/iPadOS 27 suddar till överkanten i hemskärmsappar. Ett fast element överst (minst 90 % brett,
-     över 10 px högt) får WebKit att färga kanten i elementets bakgrundsfärg i stället. background-clip:text
-     gör att remsan själv inte ritar något. Färgen är densamma som theme-color och bakgrundens överkant. */
-  .remove-blur { display:none; }
-  @media (display-mode: standalone) {
-    .remove-blur { display:block; position:fixed; inset:0 0 auto; height:max(11px, env(safe-area-inset-top)); z-index:2147483647; pointer-events:none;
-                   background:#10152e; -webkit-background-clip:text; background-clip:text; }
-  }
-  /* Samma som i Pyramid: tonade och valda kort, draghögens ring och antal */
-  .card.dim { filter:brightness(.62) saturate(.8); }
-  .card.sel { box-shadow:0 0 0 3px var(--gold), 0 0 24px var(--gold); }
-  .card.match { box-shadow:0 0 0 2px rgba(245,213,138,.7), 0 0 12px rgba(245,213,138,.45); }
-  .slot.stock { display:grid; place-items:center; color:var(--gold); font-size:calc(var(--cw) * .4); cursor:pointer; }
-  .slot.stock.empty { opacity:.35; cursor:default; }
-  .badge { position:absolute; min-width:26px; height:26px; padding:0 7px; border-radius:13px; background:var(--gold); color:#1b1b2e; font-weight:800; font-size:13px;
-           display:grid; place-items:center; box-shadow:0 2px 6px rgba(0,0,0,.4); z-index:1500; pointer-events:none; }
-  .plabel { position:absolute; font-size:11px; letter-spacing:.16em; text-transform:uppercase; opacity:.6; text-align:center; pointer-events:none; }
-  .lobby .rules { font-size:13px; margin:2px 0 0; }
-  /* Grundhögarna visar sitt färgtecken när de är tomma */
-  .slot.found { display:grid; place-items:center; color:rgba(245,213,138,.35); font-size:calc(var(--cw) * .5); }
   .slot.cell { border-style:dashed; }
   .slot.off { display:none; }
 </style>
@@ -200,14 +76,12 @@
   I18N.apply();
   const $ = id => document.getElementById(id);
   const board = $('board');
+  // Gemensamt för alla spel (game.js): lagring, startsidans inställningar, kortens plats, meddelanden och skakning
+  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake } = Game.init(board);
 
   let st = null, hist = [], els = [], M = null, drag = null, finishing = false;
   let hintIdx = 0, hintTimer = 0, paused = false;
 
-  const store = {
-    get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
-    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
-  };
   // Statistiken sparas per antal fria celler ("4" klassisk, "2" svår) i samma form som Spiders
   const LEVELS = ['4', '2'];
   function loadStats() {
@@ -219,18 +93,8 @@
   const save = () => st && store.set('freecell.game', { st, hist });
 
   // Animationer, tips, ljud och kortens utseende är övergripande inställningar (startsidan). Antal celler är FreeCells eget.
-  const global = store.get('solitaires.settings') || {};
   const SKEY = 'freecell.settings';
   const settings = Object.assign({ cells: 4 }, store.get(SKEY) || {});
-  const SPEED = { normal: 1, fast: .5, off: 0 }[global.anim] ?? 1;
-  // Hur många drag som går att ångra (startsidans inställningar): 0 = av, 1 eller 5
-  const UNDO = [0, 1, 5].includes(global.undo) ? global.undo : 5;
-  const HINTS = global.hints !== false;
-  const FACE = CardFaces.FACES.includes(global.face) ? global.face : 'standard';
-  const BACK = CardFaces.BACKS.includes(global.back) ? global.back : 'rings';
-  board.classList.add('face-' + FACE, 'back-' + BACK);
-  board.style.setProperty('--dur', (.3 * SPEED) + 's');
-  CardSounds.init(global.sound);
 
   // ---------- Regler ----------
   // Åtta kolumner (tab) med kort-id:n, alla uppvända. Kolumnerna byggs nedåt i omväxlande röd och svart, och vilket kort
@@ -394,7 +258,6 @@
   function clearHint() { hintIdx = 0; clearHintMarks(); }
 
   // ---------- Layout & rendering ----------
-  function instant(fn) { board.classList.add('noanim'); fn(); void board.offsetWidth; board.classList.remove('noanim'); }
   function buildCards() {
     els.forEach(e => e.remove());
     els = st.deck.map((c, id) => {
@@ -432,8 +295,6 @@
     return UP * M.ch * (need > room ? room / need : 1);
   }
   const MOVE_VOL = .4;   // spelarens egna flyttar (och ångra) låter svagare än utdelningen
-  // Kortets plats sätts med translate, som iPaden kan animera mjukt utan att räkna om sidan. Platsen sparas i _x och _y.
-  const place = (e, x, y) => { e._x = x; e._y = y; e.style.translate = x + 'px ' + y + 'px'; };
   function render(anim = {}) {
     const delay = anim.delay || {};
     const quiet = board.classList.contains('noanim');
@@ -455,7 +316,6 @@
     st.tab.forEach((col, c) => { const dy = step(col); col.forEach((id, k) => set(id, M.xs[c], M.ty + k * dy, 200 + k, 'card up')); });
     updateHud();
   }
-  const fmt = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
   function updateHud() {
     $('score').textContent = st.score;
     $('moves').textContent = st.moves;
@@ -465,16 +325,6 @@
     $('cleared').textContent = c + '/52';
     $('ring').style.setProperty('--p', c / 52 * 100);
     $('b-undo').disabled = UNDO > 0 && (!hist.length || st.won);
-  }
-  let toastTimer = 0;
-  function toast(msg) {
-    const el = $('toast');
-    el.textContent = msg; el.classList.add('show');
-    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
-  }
-  function shake(list) {
-    list.forEach(el => { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); });
-    setTimeout(() => list.forEach(el => el.classList.remove('shake')), 350);
   }
 
   // ---------- Touch / mus ----------
@@ -549,7 +399,6 @@
   document.querySelectorAll('#lobby [data-key=cells] .btn').forEach(b => b.textContent = t('cellsN', +b.dataset.v));
   const levelName = cells => t('cellsN', +cells);
   // Slutdialogernas knappar: rubrik plus en rad om vad som händer, och Nytt spel visar inställningarna det startas med
-  const btnText = (title, sub) => `${title}<small>${sub}</small>`;
   function fillEnd() {
     const next = btnText(t('newGame'), levelName(settings.cells)), change = btnText(t('changeGame'), t('fcChangeSub'));
     $('w-change').innerHTML = $('lo-change').innerHTML = change;
@@ -588,8 +437,6 @@
   }));
   $('b-undo').onclick = undo;
   $('b-hint').onclick = hint;
-  if (!HINTS) $('b-hint').classList.add('off');
-  if (!UNDO) $('b-undo').classList.add('off');
   $('b-menu').onclick = showLobby;
   $('b-new').onclick = () => { if (inProgress()) open('confirm'); else newGame(); };
   $('l-resume').onclick = () => { close('lobby'); if (stuck()) showLost(); };
@@ -608,27 +455,14 @@
     else if (e.key === 'h') hint();
   });
 
-  setInterval(() => {
-    if (!st || st.won || paused || document.hidden || st.moves === 0) return;
-    st.time++;
-    $('time').textContent = fmt(st.time);
-    if (st.time % 5 === 0) save();
-  }, 1000);
-  window.addEventListener('pagehide', save);
-  document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
-  // Räkna om layouten när skärmen ändrar storlek. iOS skickar inte alltid resize vid vridning
-  // (t.ex. om iPaden vreds medan appen låg i bakgrunden), så vi lyssnar på flera håll.
+  // Räkna om layouten när skärmen ändrar storlek (game.js lyssnar efter vridning och storleksändring)
   function relayout() {
     if (drag || !M || (M.W === board.clientWidth && M.H === board.clientHeight)) return false;
     layout(); if (st) instant(() => render());
     return true;
   }
-  const relayoutSoon = () => { relayout(); requestAnimationFrame(relayout); setTimeout(relayout, 350); };
-  window.addEventListener('resize', relayoutSoon);
-  window.addEventListener('orientationchange', relayoutSoon);
-  window.addEventListener('pageshow', relayoutSoon);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) relayoutSoon(); });
-  if (window.ResizeObserver) new ResizeObserver(relayout).observe(board);
+  // Tidtagning, sparande när appen stängs, omräkning vid vridning och offline-stöd (game.js)
+  Game.watch({ board, game: () => st, paused: () => paused, save, relayout });
 
   // ---------- Start ----------
   layout();
@@ -640,11 +474,6 @@
     if (canFinish()) autoFinish();
   }
   showLobby();
-
-  // Offline-stöd (kräver https eller localhost)
-  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
-  }
 })();
 </script>
 </body>

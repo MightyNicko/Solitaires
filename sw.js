@@ -2,8 +2,8 @@
 // därifrån, utan att vänta på nätet. Sidor och filer kommer alltid från samma version, så de passar ihop.
 // En ny version hämtas när webbläsaren ser att sw.js har ändrats: den installeras i bakgrunden och tar över,
 // och används från nästa sidbyte. Byt därför CACHE varje gång någon fil ändras, och lägg till nya filer i FILES.
-const CACHE = 'solitaires-v25';
-const FILES = ['./', './index.html', './games.html', './games.js', './spider.html', './pyramid.html', './golf.html', './klondike.html', './freecell.html', './tripeaks.html', './yukon.html', './forty.html', './cards.css', './cards.js', './i18n.js', './sounds.js', './sounds/card-place-1.wav', './sounds/card-place-2.wav', './sounds/card-place-3.wav', './sounds/card-place-4.wav', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
+const CACHE = 'solitaires-v26';
+const FILES = ['./', './index.html', './games.html', './games.js', './spider.html', './pyramid.html', './golf.html', './klondike.html', './freecell.html', './tripeaks.html', './yukon.html', './forty.html', './cards.css', './cards.js', './game.css', './game.js', './i18n.js', './sounds.js', './sounds/card-place-1.wav', './sounds/card-place-2.wav', './sounds/card-place-3.wav', './sounds/card-place-4.wav', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
   // cache:'reload' hämtar förbi webbläsarens egen cache, så att den nya versionen inte blandas med gamla filer
