@@ -46,7 +46,7 @@
 
   /* Docka */
   .dock { position:absolute; bottom:calc(env(safe-area-inset-bottom) + 12px); left:50%; transform:translateX(-50%); display:flex; gap:12px; padding:9px 14px; border-radius:28px;
-          background:rgba(20,26,53,.55); border:1px solid var(--glassb); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); z-index:2000; }
+          background:rgba(20,26,53,.9); border:1px solid var(--glassb); z-index:2000; }   /* tät bakgrund i stället för suddning: lättare att rita när kort rör sig under */
   .dock button { all:unset; touch-action:manipulation; width:66px; height:56px; border-radius:18px; display:flex; flex-direction:column; align-items:center;
                  justify-content:center; gap:3px; background:rgba(255,255,255,.06); color:var(--ink); cursor:pointer; font-size:10.5px;
                  letter-spacing:.07em; text-transform:uppercase; transition:transform .1s, opacity .2s; }
@@ -420,8 +420,14 @@
       // Ett kort som flyttas låter när det landar: efter sin fördröjning och ca 60 % av rörelsen (den bromsar in mot slutet)
       if (!quiet && (Math.abs(parseFloat(e.style.left) - x) > 8 || Math.abs(parseFloat(e.style.top) - y) > 8))
         CardSounds.place(((delay[id] || 0) + 180) * SPEED, (cls.includes('gone') ? .6 : 1) * (anim.vol ?? 1));
-      e.style.left = x + 'px'; e.style.top = y + 'px'; e.style.zIndex = z;
-      e.className = cls; e.style.transform = ''; e.style.transitionDelay = (delay[id] || 0) * SPEED + 'ms';
+      // Skriv bara det som har ändrats, så att webbläsaren inte behöver räkna om kort som ligger still
+      const l = x + 'px', tp = y + 'px', zs = String(z), dl = (delay[id] || 0) * SPEED + 'ms';
+      if (e.style.left !== l) e.style.left = l;
+      if (e.style.top !== tp) e.style.top = tp;
+      if (e.style.zIndex !== zs) e.style.zIndex = zs;
+      if (e.className !== cls) e.className = cls;
+      if (e.style.transform) e.style.transform = '';
+      if (e.style.transitionDelay !== dl) e.style.transitionDelay = dl;
     };
     st.stock.forEach(id => set(id, M.sx, M.sy, 1, 'card stock'));
     st.done.forEach((id, j) => set(id, M.rx, M.ry, 3100 - j % 13, 'card up gone'));
