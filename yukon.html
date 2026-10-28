@@ -291,8 +291,7 @@
     else if (canFinish()) autoFinish();
     else if (stuck()) setTimeout(() => {
       if (!st || st.won || !stuck()) return;
-      $('lost-text').textContent = t('winStats', { score: st.score, moves: st.moves, time: fmt(st.time) });
-      open('lost');
+      showLost();
     }, 700);
   }
   const stuck = () => !st.won && !finishing && !findMoves().length;
@@ -524,6 +523,12 @@
   }
   function open(id) { if (id === 'win' || id === 'lost') fillEnd(); paused = true; $(id).classList.add('open'); }
   const inProgress = () => st && !st.won && st.moves > 0 && !stuck();
+  // Ett fastlåst spel finns kvar att fortsätta (sidan Spela visar Fortsätt), och då visas Inga fler drag igen
+  const resumable = () => st && !st.won && st.moves > 0;
+  function showLost() {
+    $('lost-text').textContent = t('winStats', { score: st.score, moves: st.moves, time: fmt(st.time) });
+    open('lost');
+  }
   function refreshLobby() {
     document.querySelectorAll('#lobby .seg').forEach(seg => {
       const v = String(settings[seg.dataset.key]);
@@ -532,7 +537,7 @@
     $('rules').textContent = t('ykRules') + ' ' + t(settings.variant === 'russian' ? 'ykRussianRules' : 'ykClassicRules');
     const s = loadStats()[settings.variant];
     $('st-played').textContent = s.played; $('st-won').textContent = s.won; $('st-best').textContent = s.best || '–';
-    const going = inProgress();
+    const going = resumable();
     $('l-resume').style.display = going ? '' : 'none';
     if (going) $('l-resume').innerHTML = `${t('resume')}<small>${levelName(st.variant)} · ${t('klonProgress', homed())}</small>`;
     $('l-play').className = going ? 'btn' : 'btn gold';
@@ -551,7 +556,7 @@
   if (!HINTS) $('b-hint').classList.add('off');
   $('b-menu').onclick = showLobby;
   $('b-new').onclick = () => { if (inProgress()) open('confirm'); else newGame(); };
-  $('l-resume').onclick = () => close('lobby');
+  $('l-resume').onclick = () => { close('lobby'); if (stuck()) showLost(); };
   $('l-play').onclick = () => { if (inProgress()) open('confirm'); else { close('lobby'); newGame(); } };
   $('l-home').onclick = () => { save(); location.href = 'games.html'; };
   $('c-no').onclick = () => close('confirm');

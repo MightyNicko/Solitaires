@@ -288,8 +288,7 @@
     if (cleared() === 28 && !st.won) win();
     else if (stuck()) setTimeout(() => {
       if (!st || st.won || !stuck()) return;
-      $('lost-text').textContent = t('winStats', { score: st.score, moves: st.moves, time: fmt(st.time) });
-      open('lost');
+      showLost();
     }, 700);
   }
   // Inga drag kvar: inget par nu, och inget kort som går att dra fram ur talongen (eller ur kasthögen, om den får
@@ -518,6 +517,12 @@
   }
   function open(id) { if (id === 'win' || id === 'lost') fillEnd(); paused = true; $(id).classList.add('open'); }
   const inProgress = () => st && !st.won && st.moves > 0 && !stuck();
+  // Ett fastlåst spel finns kvar att fortsätta (sidan Spela visar Fortsätt), och då visas Inga fler drag igen
+  const resumable = () => st && !st.won && st.moves > 0;
+  function showLost() {
+    $('lost-text').textContent = t('winStats', { score: st.score, moves: st.moves, time: fmt(st.time) });
+    open('lost');
+  }
   function refreshLobby() {
     document.querySelectorAll('#lobby .seg').forEach(seg => {
       const v = String(settings[seg.dataset.key]);
@@ -526,7 +531,7 @@
     $('rules').textContent = t('pyrRules') + (settings.variant === 'hidden' ? ' ' + t('pyrHiddenRules') : '');
     const s = loadStats()[level(settings.variant, settings.passes)];
     $('st-played').textContent = s.played; $('st-won').textContent = s.won; $('st-best').textContent = s.best || '–';
-    const going = inProgress();
+    const going = resumable();
     $('l-resume').style.display = going ? '' : 'none';
     if (going) $('l-resume').innerHTML = `${t('resume')}<small>${levelName(st.variant, st.passes)} · ${t('pyrProgress', cleared())}</small>`;
     $('l-play').className = going ? 'btn' : 'btn gold';
@@ -546,7 +551,7 @@
   if (!HINTS) $('b-hint').classList.add('off');
   $('b-menu').onclick = showLobby;
   $('b-new').onclick = () => { if (inProgress()) open('confirm'); else newGame(); };
-  $('l-resume').onclick = () => close('lobby');
+  $('l-resume').onclick = () => { close('lobby'); if (stuck()) showLost(); };
   $('l-play').onclick = () => { if (inProgress()) open('confirm'); else { close('lobby'); newGame(); } };
   $('l-home').onclick = () => { save(); location.href = 'games.html'; };
   $('c-no').onclick = () => close('confirm');

@@ -207,8 +207,9 @@
     const th = Math.round(tw * ratio), txt = Math.round(Math.min(th * .6, Math.max(Math.min(118, th * .42), need))), ph = th - txt;
     // Långa namn (FREECELL, FYRTIO RÖVARE) krymps så att de ryms på rutans bredd
     const nmFit = name => `font-size:${Math.min(nm, (tw - 20) / (name.length * .95)).toFixed(1)}px`;
-    const grid = $('grid');
-    Object.assign(grid.style, { top: top + 'px', height: (bottom - top) + 'px', gridTemplateColumns: `repeat(${cols}, ${tw}px)`, gap: gap + 'px' });
+    // Rutnätet rullar och klipper därför allt utanför sig. Luft runt rutorna så att deras yttre ring inte klipps av.
+    const grid = $('grid'), pad = 10;
+    Object.assign(grid.style, { top: (top - pad) + 'px', height: (bottom - top + 2 * pad) + 'px', padding: pad + 'px 0', gridTemplateColumns: `repeat(${cols}, ${tw}px)`, gap: gap + 'px' });
     grid.style.setProperty('--sb', sb + 'px');
     grid.innerHTML = items.map((g, i) => {
       const delay = `animation-delay:${i * 60}ms`;
