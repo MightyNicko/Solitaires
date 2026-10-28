@@ -12,10 +12,13 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Yukon Solitaire</title>
 <link rel="stylesheet" href="cards.css">
+<link rel="stylesheet" href="base.css">
 <link rel="stylesheet" href="game.css">
 <script src="i18n.js"></script>
 <script src="cards.js"></script>
 <script src="sounds.js"></script>
+<script src="games.js"></script>
+<script src="base.js"></script>
 <script src="game.js"></script>
 </head>
 <body>
@@ -35,7 +38,7 @@
 <div class="toast" id="toast"></div>
 
 <div class="overlay lobby" id="lobby"><div class="panel">
-  <div class="medal"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#f5d58a" d="M24 6l7 9h-3.5l6 8H30l7 9H11l7-9h-3.5l6-8H17z"/><rect x="21.5" y="32" width="5" height="9" rx="1" fill="#f5d58a"/></svg></div>
+  <div class="medal"><svg viewBox="0 0 48 48" aria-hidden="true"></svg></div>
   <h2 data-i18n="yukon">Yukon</h2>
   <div class="orn">◆ Solitaire ◆</div>
   <p class="rules" id="rules"></p>
@@ -71,14 +74,15 @@
   I18N.apply();
   const $ = id => document.getElementById(id);
   const board = $('board');
-  // Gemensamt för alla spel (game.js): lagring, startsidans inställningar, kortens plats, meddelanden och skakning
-  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake } = Game.init(board);
+  // Gemensamt för alla spel (game.js): lagring, startsidans inställningar, kortens plats, meddelanden och skakning.
+  // INFO är spelets uppgifter i games.js: nivåer, nivånamn och lobbyns symbol.
+  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO } = Game.init(board, 'yukon');
 
   let st = null, hist = [], els = [], M = null, drag = null, finishing = false;
   let hintIdx = 0, hintTimer = 0, paused = false;
 
   // Statistiken sparas per variant i samma form som Spiders: "classic" eller "russian"
-  const LEVELS = ['classic', 'russian'];
+  const LEVELS = INFO.levels.map(l => String(l.key));
   function loadStats() {
     const s = store.get('yukon.stats') || {};
     for (const k of LEVELS) s[k] = s[k] || { played:0, won:0, best:0, fast:0 };
@@ -372,7 +376,7 @@
 
   // ---------- Knappar & dialoger ----------
   function close(id) { $(id).classList.remove('open'); paused = !!document.querySelector('.overlay.open'); }
-  const levelName = variant => t(variant === 'russian' ? 'russian' : 'classic');
+  const levelName = INFO.levelName;
   // Slutdialogernas knappar: rubrik plus en rad om vad som händer, och Nytt spel visar inställningarna det startas med
   function fillEnd() {
     const next = btnText(t('newGame'), levelName(settings.variant)), change = btnText(t('changeGame'), t('golfChangeSub'));

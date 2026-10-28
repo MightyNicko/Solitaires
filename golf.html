@@ -12,10 +12,13 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Golf Solitaire</title>
 <link rel="stylesheet" href="cards.css">
+<link rel="stylesheet" href="base.css">
 <link rel="stylesheet" href="game.css">
 <script src="i18n.js"></script>
 <script src="cards.js"></script>
 <script src="sounds.js"></script>
+<script src="games.js"></script>
+<script src="base.js"></script>
 <script src="game.js"></script>
 </head>
 <body>
@@ -39,7 +42,7 @@
 <div class="toast" id="toast"></div>
 
 <div class="overlay lobby" id="lobby"><div class="panel">
-  <div class="medal"><svg viewBox="0 0 48 48" aria-hidden="true"><line x1="21" y1="7" x2="21" y2="38" stroke="#f5d58a" stroke-width="2.4" stroke-linecap="round"/><path fill="#f5d58a" d="M22 7l14 5.5L22 18z"/><ellipse cx="24" cy="39.5" rx="11" ry="3" fill="none" stroke="#f5d58a" stroke-width="2"/></svg></div>
+  <div class="medal"><svg viewBox="0 0 48 48" aria-hidden="true"></svg></div>
   <h2>Golf</h2>
   <div class="orn">◆ Solitaire ◆</div>
   <p class="rules" id="rules"></p>
@@ -75,14 +78,15 @@
   I18N.apply();
   const $ = id => document.getElementById(id);
   const board = $('board');
-  // Gemensamt för alla spel (game.js): lagring, startsidans inställningar, kortens plats, meddelanden och skakning
-  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake } = Game.init(board);
+  // Gemensamt för alla spel (game.js): lagring, startsidans inställningar, kortens plats, meddelanden och skakning.
+  // INFO är spelets uppgifter i games.js: nivåer, nivånamn och lobbyns symbol.
+  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO } = Game.init(board, 'golf');
 
   let st = null, hist = [], els = [], M = null, drag = null;
   let hintIdx = 0, hintTimer = 0, paused = false;
 
   // Statistiken sparas per variant i samma form som Spiders: "classic" eller "wrap" (runt hörnet)
-  const LEVELS = ['classic', 'wrap'];
+  const LEVELS = INFO.levels.map(l => String(l.key));
   function loadStats() {
     const s = store.get('golf.stats') || {};
     for (const k of LEVELS) s[k] = s[k] || { played:0, won:0, best:0, fast:0 };
@@ -318,7 +322,7 @@
 
   // ---------- Knappar & dialoger ----------
   function close(id) { $(id).classList.remove('open'); paused = !!document.querySelector('.overlay.open'); }
-  const levelName = variant => t(variant === 'wrap' ? 'wrap' : 'classic');
+  const levelName = INFO.levelName;
   // Slutdialogernas knappar: rubrik plus en rad om vad som händer, och Nytt spel visar inställningarna det startas med
   function fillEnd() {
     const next = btnText(t('newGame'), levelName(settings.variant)), change = btnText(t('changeGame'), t('golfChangeSub'));

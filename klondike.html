@@ -12,10 +12,13 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Klondike Solitaire</title>
 <link rel="stylesheet" href="cards.css">
+<link rel="stylesheet" href="base.css">
 <link rel="stylesheet" href="game.css">
 <script src="i18n.js"></script>
 <script src="cards.js"></script>
 <script src="sounds.js"></script>
+<script src="games.js"></script>
+<script src="base.js"></script>
 <script src="game.js"></script>
 </head>
 <body>
@@ -39,7 +42,7 @@
 <div class="toast" id="toast"></div>
 
 <div class="overlay lobby" id="lobby"><div class="panel">
-  <div class="medal"><svg viewBox="0 0 48 48" aria-hidden="true"><g fill="none" stroke="#f5d58a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 41V9c6-2 10 3 14 6s8 2 9-1"/><path d="M36 14 17 41H11"/></g><g stroke="#f5d58a" stroke-width="1.1" opacity=".85"><line x1="17" y1="12.7" x2="17" y2="41"/><line x1="21" y1="14.9" x2="21" y2="35.32"/><line x1="25" y1="17.1" x2="25" y2="29.64"/><line x1="29" y1="16.1" x2="29" y2="23.96"/><line x1="33" y1="15.3" x2="33" y2="18.28"/></g></svg></div>
+  <div class="medal"><svg viewBox="0 0 48 48" aria-hidden="true"></svg></div>
   <h2 data-i18n="klondike">Klondike</h2>
   <div class="orn">◆ Solitaire ◆</div>
   <p class="rules" data-i18n="klonRules">Build the columns down in alternating colours. Move aces to the foundations and build them up by suit to the king.</p>
@@ -77,16 +80,16 @@
   I18N.apply();
   const $ = id => document.getElementById(id);
   const board = $('board');
-  // Gemensamt för alla spel (game.js): lagring, startsidans inställningar, kortens plats, meddelanden och skakning
-  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake } = Game.init(board);
+  // Gemensamt för alla spel (game.js): lagring, startsidans inställningar, kortens plats, meddelanden och skakning.
+  // INFO är spelets uppgifter i games.js: nivåer, nivånamn och lobbyns symbol.
+  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO } = Game.init(board, 'klondike');
 
   let st = null, hist = [], els = [], M = null, drag = null, finishing = false;
   let hintIdx = 0, hintTimer = 0, paused = false;
 
   // Statistiken sparas per nivå i samma form som Spiders. Nivån är antal kort per dragning och antal varv
   // genom draghögen (0 = obegränsat), t.ex. "1-0" för dra 1 med obegränsat antal varv och "3-3" för dra 3 med 3 varv.
-  const level = (draw, passes) => draw + '-' + passes;
-  const LEVELS = [1, 3].flatMap(d => [0, 3].map(p => level(d, p)));
+  const level = INFO.levelKey, LEVELS = INFO.levels.map(l => String(l.key));
   function loadStats() {
     const s = store.get('klondike.stats') || {};
     for (const k of LEVELS) s[k] = s[k] || { played:0, won:0, best:0, fast:0 };
@@ -432,7 +435,7 @@
   function close(id) { $(id).classList.remove('open'); paused = !!document.querySelector('.overlay.open'); }
   document.querySelectorAll('#lobby [data-key=draw] .btn').forEach(b => b.textContent = t('drawCards', +b.dataset.v));
   document.querySelectorAll('#lobby [data-key=passes] .btn').forEach(b => b.textContent = t('passes', +b.dataset.v));
-  const levelName = (draw, passes) => t('drawCards', draw) + ' · ' + t('passes', passes);
+  const levelName = INFO.levelName;
   // Slutdialogernas knappar: rubrik plus en rad om vad som händer, och Nytt spel visar inställningarna det startas med
   function fillEnd() {
     const next = btnText(t('newGame'), levelName(settings.draw, settings.passes)), change = btnText(t('changeGame'), t('klonChangeSub'));

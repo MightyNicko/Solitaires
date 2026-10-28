@@ -1,7 +1,6 @@
 /* Gemensam stil för alla spel: spelplan, poängrad, docka, kort, dialoger och lobby.
    Varje spel har bara sina egna, få regler kvar i sin egen <style>. Kortens fram- och baksidor finns i cards.css. */
 :root { --gold:#f5d58a; --gold2:#c9a24a; --ink:#e9dfc4; --glass:rgba(255,255,255,.08); --glassb:rgba(255,255,255,.14); }
-* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 html, body { margin:0; height:var(--app-h,100%); overflow:hidden; overscroll-behavior:none; background:#0b0f22; }
 body { color:var(--ink); font-family:-apple-system,"Segoe UI",system-ui,sans-serif; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
 /* Spelplanen täcker hela skärmen. Överkanten har samma färg som statusfältet (theme-color #10152e). */
@@ -106,14 +105,6 @@ body { color:var(--ink); font-family:-apple-system,"Segoe UI",system-ui,sans-ser
   .hud .ttl span { font-size:14px; letter-spacing:.14em; margin-right:-.14em; }
 }
 
-/* iOS/iPadOS 27 suddar till överkanten i hemskärmsappar. Ett fast element överst (minst 90 % brett,
-   över 10 px högt) får WebKit att färga kanten i elementets bakgrundsfärg i stället. background-clip:text
-   gör att remsan själv inte ritar något. Färgen är densamma som theme-color och bakgrundens överkant. */
-.remove-blur { display:none; }
-@media (display-mode: standalone) {
-  .remove-blur { display:block; position:fixed; inset:0 0 auto; height:max(11px, env(safe-area-inset-top)); z-index:2147483647; pointer-events:none;
-                 background:#10152e; -webkit-background-clip:text; background-clip:text; }
-}
 /* Pyramid, Golf, TriPeaks och stapelspelen: tonade, valda och spelbara kort, draghögens ring och antal, etiketter */
 .card.dim { filter:brightness(.62) saturate(.8); }
 .card.sel { box-shadow:0 0 0 3px var(--gold), 0 0 24px var(--gold); }

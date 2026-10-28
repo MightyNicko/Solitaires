@@ -12,10 +12,13 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Spider Solitaire</title>
 <link rel="stylesheet" href="cards.css">
+<link rel="stylesheet" href="base.css">
 <link rel="stylesheet" href="game.css">
 <script src="i18n.js"></script>
 <script src="cards.js"></script>
 <script src="sounds.js"></script>
+<script src="games.js"></script>
+<script src="base.js"></script>
 <script src="game.js"></script>
 </head>
 <body>
@@ -34,7 +37,7 @@
 <div class="toast" id="toast"></div>
 
 <div class="overlay lobby" id="lobby"><div class="panel">
-  <div class="medal"><svg viewBox="0 0 48 48" aria-hidden="true"><g fill="#f5d58a"><ellipse cx="24" cy="19" rx="6.5" ry="8"/><circle cx="24" cy="31" r="4.5"/></g><g fill="none" stroke="#f5d58a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 20 11 13 8 17M19 24 9 23 6 29M20 29 11 32 9 39M21 33 15 38 14 42"/><path d="M29 20 37 13 40 17M29 24 39 23 42 29M28 29 37 32 39 39M27 33 33 38 34 42"/></g></svg></div>
+  <div class="medal"><svg viewBox="0 0 48 48" aria-hidden="true"></svg></div>
   <h2 data-i18n="spider">Spider</h2>
   <div class="orn">◆ Solitaire ◆</div>
   <div class="label" data-i18n="difficulty">Difficulty</div>
@@ -65,15 +68,17 @@
   I18N.apply();
   const $ = id => document.getElementById(id);
   const board = $('board');
-  // Gemensamt för alla spel (game.js): lagring, startsidans inställningar, kortens plats, meddelanden och skakning
-  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake } = Game.init(board);
+  // Gemensamt för alla spel (game.js): lagring, startsidans inställningar, kortens plats, meddelanden och skakning.
+  // INFO är spelets uppgifter i games.js: nivåer, nivånamn och lobbyns symbol.
+  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO } = Game.init(board, 'spider');
 
   let st = null, hist = [], els = [], slots = [], M = null, drag = null;
   let hints = null, hintIdx = 0, hintTimer = 0, paused = false;
 
+  const LEVELS = INFO.levels.map(l => String(l.key));
   function loadStats() {
     const s = store.get('spider.stats') || {};
-    for (const k of [1, 2, 4]) s[k] = s[k] || { played:0, won:0, best:0, fast:0 };
+    for (const k of LEVELS) s[k] = s[k] || { played:0, won:0, best:0, fast:0 };
     return s;
   }
   const saveStats = s => store.set('spider.stats', s);
@@ -372,7 +377,7 @@
 
   // ---------- Knappar & dialoger ----------
   function close(id) { $(id).classList.remove('open'); paused = !!document.querySelector('.overlay.open'); }
-  const colors = n => t('suits', n);
+  const colors = INFO.levelName;
   // Slutdialogernas knappar: rubrik plus en rad om vad som händer, och Nytt spel visar inställningarna det startas med
   function fillEnd() {
     const next = btnText(t('newGame'), colors(settings.suits)), change = btnText(t('changeGame'), t('spiderChangeSub'));

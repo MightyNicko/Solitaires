@@ -12,10 +12,13 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Pyramid Solitaire</title>
 <link rel="stylesheet" href="cards.css">
+<link rel="stylesheet" href="base.css">
 <link rel="stylesheet" href="game.css">
 <script src="i18n.js"></script>
 <script src="cards.js"></script>
 <script src="sounds.js"></script>
+<script src="games.js"></script>
+<script src="base.js"></script>
 <script src="game.js"></script>
 </head>
 <body>
@@ -39,7 +42,7 @@
 <div class="toast" id="toast"></div>
 
 <div class="overlay lobby" id="lobby"><div class="panel">
-  <div class="medal"><svg viewBox="0 0 48 48" aria-hidden="true"><polygon fill="#f5d58a" points="24,9 40,38 8,38" stroke="#f5d58a" stroke-width="2" stroke-linejoin="round"/></svg></div>
+  <div class="medal"><svg viewBox="0 0 48 48" aria-hidden="true"></svg></div>
   <h2 data-i18n="pyramid">Pyramid</h2>
   <div class="orn">◆ Solitaire ◆</div>
   <p class="rules" id="rules"></p>
@@ -77,16 +80,16 @@
   I18N.apply();
   const $ = id => document.getElementById(id);
   const board = $('board');
-  // Gemensamt för alla spel (game.js): lagring, startsidans inställningar, kortens plats, meddelanden och skakning
-  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake } = Game.init(board);
+  // Gemensamt för alla spel (game.js): lagring, startsidans inställningar, kortens plats, meddelanden och skakning.
+  // INFO är spelets uppgifter i games.js: nivåer, nivånamn och lobbyns symbol.
+  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO } = Game.init(board, 'pyramid');
 
   let st = null, hist = [], els = [], M = null, drag = null, sel = -1;
   let hintIdx = 0, hintTimer = 0, paused = false;
 
   // Statistiken sparas per nivå i samma form som Spiders. Nivån är variant och antal varv genom talongen
   // (0 = obegränsat), t.ex. "2" för klassisk med 2 varv och "h0" för dolda rader med obegränsat antal varv.
-  const level = (variant, passes) => (variant === 'hidden' ? 'h' : '') + passes;
-  const LEVELS = ['classic', 'hidden'].flatMap(v => [1, 2, 0].map(n => level(v, n)));
+  const level = INFO.levelKey, LEVELS = INFO.levels.map(l => String(l.key));
   function loadStats() {
     const s = store.get('pyramid.stats') || {};
     for (const k of LEVELS) s[k] = s[k] || { played:0, won:0, best:0, fast:0 };
@@ -364,7 +367,7 @@
   // ---------- Knappar & dialoger ----------
   function close(id) { $(id).classList.remove('open'); paused = !!document.querySelector('.overlay.open'); }
   document.querySelectorAll('#lobby [data-key=passes] .btn').forEach(b => b.textContent = t('passes', +b.dataset.v));
-  const levelName = (variant, passes) => (variant === 'hidden' ? t('hiddenRows') + ' · ' : '') + t('passes', passes);
+  const levelName = INFO.levelName;
   // Slutdialogernas knappar: rubrik plus en rad om vad som händer, och Nytt spel visar inställningarna det startas med
   function fillEnd() {
     const next = btnText(t('newGame'), levelName(settings.variant, settings.passes)), change = btnText(t('changeGame'), t('pyrChangeSub'));

@@ -1,4 +1,4 @@
-// Gemensamt för alla spel. Varje spel anropar Game.init(board) först, och Game.watch(...) när spelets egna funktioner finns.
+// Gemensamt för alla spel (base.js och games.js laddas före). Varje spel anropar Game.init(board) först, och Game.watch(...) när spelets egna funktioner finns.
 // Spelreglerna, layouten och dialogernas innehåll ligger kvar i respektive spel.
 const Game = (() => {
   const $ = id => document.getElementById(id);
@@ -30,8 +30,10 @@ const Game = (() => {
     setTimeout(() => list.forEach(el => el.classList.remove('shake')), 350);
   }
 
-  // Förbereder spelplanen: kortens utseende, animationernas längd, ljud, och knapparna Tips och Ångra om de är avstängda
-  function init(board) {
+  // Förbereder spelplanen: lobbyns symbol, kortens utseende, animationernas längd, ljud, och knapparna Tips och Ångra om de är avstängda
+  function init(board, id) {
+    const INFO = GAMES.find(g => g.id === id);
+    $('lobby').querySelector('.medal svg').innerHTML = INFO.svg;   // samma symbol som på sidan Spela
     board.classList.add('face-' + FACE, 'back-' + BACK);
     board.style.setProperty('--dur', (.3 * SPEED) + 's');
     CardSounds.init(global.sound);
@@ -39,7 +41,7 @@ const Game = (() => {
     if (!UNDO) $('b-undo').classList.add('off');
     // Gör ändringar utan animation (t.ex. när korten läggs på plats efter en vridning)
     const instant = fn => { board.classList.add('noanim'); fn(); void board.offsetWidth; board.classList.remove('noanim'); };
-    return { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake };
+    return { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO };
   }
 
   // Tidtagning, sparande och omräkning av layouten. game() ger spelets tillstånd och paused() om en dialog är öppen.
@@ -61,10 +63,7 @@ const Game = (() => {
     window.addEventListener('pageshow', relayoutSoon);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) relayoutSoon(); });
     if (window.ResizeObserver) new ResizeObserver(relayout).observe(board);
-    // Offline-stöd (kräver https eller localhost)
-    if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
-    }
+    Base.offline();
   }
 
   return { init, watch };

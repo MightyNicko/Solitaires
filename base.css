@@ -1,0 +1,33 @@
+/* Gemensamt för alla sidor (startsidan, sidan Spela och spelen) */
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+/* Startsidan och sidan Spela: övergång vid sidbyte, stjärnhimmel, ram och hörn. Måttet --u sätts av respektive sida. */
+body.leaving { opacity:0; }
+.stars { position:absolute; inset:0; pointer-events:none; }
+.star { position:absolute; width:var(--s); height:var(--s); margin:calc(var(--s) / -2) 0 0 calc(var(--s) / -2); border-radius:50%;
+        background:#fff; box-shadow:0 0 calc(var(--s) * 2) rgba(255,255,255,.7); animation:twinkle var(--t) ease-in-out var(--d) infinite; }
+.star.gold { background:var(--gold); box-shadow:0 0 calc(var(--s) * 2.5) rgba(245,213,138,.8); }
+.star.spark { border-radius:0; background:var(--gold); box-shadow:none; filter:drop-shadow(0 0 3px rgba(245,213,138,.9));
+              clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%); animation-name:sparkle; }
+@keyframes twinkle { 0%,100% { opacity:.25; transform:scale(.7); } 50% { opacity:1; transform:scale(1); } }
+@keyframes sparkle { 0%,100% { opacity:.15; transform:scale(.4) rotate(0deg); } 50% { opacity:1; transform:scale(1) rotate(45deg); } }
+.frame { position:absolute; pointer-events:none;
+         top:calc(env(safe-area-inset-top) + max(2.6 * var(--u), 12px)); bottom:calc(env(safe-area-inset-bottom) + max(2.6 * var(--u), 12px));
+         left:calc(env(safe-area-inset-left) + max(2.6 * var(--u), 12px)); right:calc(env(safe-area-inset-right) + max(2.6 * var(--u), 12px));
+         border:1px solid rgba(245,213,138,.5); border-radius:4px; }
+.frame::before { content:""; position:absolute; inset:max(.8 * var(--u), 5px); border:1px solid rgba(245,213,138,.22); }
+.corner { position:absolute; width:max(6 * var(--u), 34px); height:max(6 * var(--u), 34px); border:max(.3 * var(--u), 2px) solid var(--gold); }
+.corner::after { content:"◆"; position:absolute; color:var(--gold); font-size:max(1.4 * var(--u), 9px); }
+.c1 { top:-1px; left:-1px; border-right:0; border-bottom:0; } .c1::after { top:20%; left:20%; }
+.c2 { top:-1px; right:-1px; border-left:0; border-bottom:0; } .c2::after { top:20%; right:20%; }
+.c3 { bottom:-1px; left:-1px; border-right:0; border-top:0; } .c3::after { bottom:20%; left:20%; }
+.c4 { bottom:-1px; right:-1px; border-left:0; border-top:0; } .c4::after { bottom:20%; right:20%; }
+
+/* iOS/iPadOS 27 suddar till överkanten i hemskärmsappar. Ett fast element överst (minst 90 % brett,
+   över 10 px högt) får WebKit att färga kanten i elementets bakgrundsfärg i stället. background-clip:text
+   gör att remsan själv inte ritar något. Färgen är densamma som theme-color och bakgrundens överkant. */
+.remove-blur { display:none; }
+@media (display-mode: standalone) {
+  .remove-blur { display:block; position:fixed; inset:0 0 auto; height:max(11px, env(safe-area-inset-top)); z-index:2147483647; pointer-events:none;
+                 background:#10152e; -webkit-background-clip:text; background-clip:text; }
+}
