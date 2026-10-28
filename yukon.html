@@ -26,6 +26,7 @@
   #board.noanim .card { transition:none !important; }
 
   /* HUD */
+  @property --p { syntax:'<number>'; inherits:false; initial-value:0; }   /* så att ringen kan glida (transition:--p) */
   .ring { position:absolute; top:calc(env(safe-area-inset-top) + 10px); left:calc(env(safe-area-inset-left) + 14px); width:58px; height:58px; border-radius:50%; z-index:2000;
           background:conic-gradient(var(--gold) calc(var(--p,0) * 1%), rgba(255,255,255,.12) 0); display:grid; place-items:center; transition:--p .4s; }
   .ring span { width:46px; height:46px; border-radius:50%; background:#141a35; display:grid; place-items:center; font-weight:700; font-size:15px; color:var(--gold); }
@@ -212,13 +213,15 @@
     return s;
   }
   const saveStats = s => store.set('yukon.stats', s);
-  const save = () => st && store.set('yukon.game', { st, hist: hist.slice(-300) });
+  const save = () => st && store.set('yukon.game', { st, hist });
 
   // Animationer, tips, ljud och kortens utseende är övergripande inställningar (startsidan). Varianten är Yukons egen.
   const global = store.get('solitaires.settings') || {};
   const SKEY = 'yukon.settings';
   const settings = Object.assign({ variant: 'classic' }, store.get(SKEY) || {});
   const SPEED = { normal: 1, fast: .5, off: 0 }[global.anim] ?? 1;
+  // Hur många drag som går att ångra (startsidans inställningar): 0 = av, 1 eller 5
+  const UNDO = [0, 1, 5].includes(global.undo) ? global.undo : 5;
   const HINTS = global.hints !== false;
   const FACE = CardFaces.FACES.includes(global.face) ? global.face : 'standard';
   const BACK = CardFaces.BACKS.includes(global.back) ? global.back : 'rings';
@@ -256,7 +259,7 @@
       col.forEach((x, k) => {
         if (!x.up) return;
         const below = col[k - 1];
-        if (below && below.up && fitsOn(x.id, below.id)) return;
+        if (below && below.up && fitsOn(x.id, below.id) && !toFound(below.id)) return;   // ligger rätt, och kortet under kan inte läggas upp
         if (!below && rank(x.id) === 13) return;
         for (let d = 0; d < 7; d++) if (d !== c && toTab(x.id, d)) res.push({ ids: col.slice(k).map(y => y.id), to: d, pri: below && !below.up ? 2 : 1 });
       });
@@ -284,7 +287,7 @@
     render({ delay }); save();
   }
   function snapshot() { return JSON.stringify({ tab: st.tab, found: st.found, score: st.score }); }
-  function pushHist() { hist.push(snapshot()); if (hist.length > 500) hist.shift(); }
+  function pushHist() { if (!UNDO) return; hist.push(snapshot()); if (hist.length > UNDO) hist.shift(); }
   function after(anim) {
     clearHint(); render(anim); save();
     if (homed() === 52 && !st.won) win();
@@ -310,7 +313,8 @@
     after({ vol: MOVE_VOL, delay: Object.fromEntries(ids.map((id, i) => [id, i * 30])) });
   }
   function undo() {
-    if (!hist.length || st.won || finishing) return;
+    if (!UNDO) { toast(t('toastUndoOff')); return; }
+    if (drag || !hist.length || st.won || finishing) return;
     const moves = st.moves;
     Object.assign(st, JSON.parse(hist.pop()));
     st.moves = moves + 1;
@@ -322,8 +326,11 @@
   function autoFinish() {
     if (finishing) return;
     finishing = true;
+    const game = st;
     const step = () => {
-      if (!st || st.won) { finishing = false; return; }
+      if (st !== game) return;   // ett nytt spel har startat
+      if (st.won) { finishing = false; return; }
+      if (paused) { setTimeout(step, 300); return; }   // vänta medan lobbyn eller en dialog är öppen
       const cs = [...Array(7).keys()].filter(c => st.tab[c].length && toFound(last(st.tab[c]).id));
       if (!cs.length) { finishing = false; return; }
       const c = cs.sort((a, b) => rank(last(st.tab[a]).id) - rank(last(st.tab[b]).id))[0], id = last(st.tab[c]).id;
@@ -436,7 +443,7 @@
     const c = homed();
     $('cleared').textContent = c + '/52';
     $('ring').style.setProperty('--p', c / 52 * 100);
-    $('b-undo').disabled = !hist.length || st.won;
+    $('b-undo').disabled = UNDO > 0 && (!hist.length || st.won);
   }
   let toastTimer = 0;
   function toast(msg) {
@@ -520,6 +527,7 @@
     $('w-change').innerHTML = $('lo-change').innerHTML = change;
     $('w-new').innerHTML = $('lo-new').innerHTML = next;
     $('lo-undo').innerHTML = btnText(t('undo'), t('undoSub'));
+    $('lo-undo').style.display = UNDO ? '' : 'none';
   }
   function open(id) { if (id === 'win' || id === 'lost') fillEnd(); paused = true; $(id).classList.add('open'); }
   const inProgress = () => st && !st.won && st.moves > 0 && !stuck();
@@ -554,6 +562,7 @@
   $('b-undo').onclick = undo;
   $('b-hint').onclick = hint;
   if (!HINTS) $('b-hint').classList.add('off');
+  if (!UNDO) $('b-undo').classList.add('off');
   $('b-menu').onclick = showLobby;
   $('b-new').onclick = () => { if (inProgress()) open('confirm'); else newGame(); };
   $('l-resume').onclick = () => { close('lobby'); if (stuck()) showLost(); };
@@ -598,7 +607,7 @@
   layout();
   const saved = store.get('yukon.game');
   if (saved && saved.st && saved.st.deck && saved.st.deck.length === 52 && saved.st.tab && !saved.st.won && saved.st.moves > 0) {
-    st = saved.st; hist = saved.hist || [];
+    st = saved.st; hist = UNDO ? (saved.hist || []).slice(-UNDO) : [];
     buildCards();
     instant(() => render());
     if (canFinish()) autoFinish();

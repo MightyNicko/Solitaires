@@ -26,6 +26,7 @@
   #board.noanim .card { transition:none !important; }
 
   /* HUD */
+  @property --p { syntax:'<number>'; inherits:false; initial-value:0; }   /* så att ringen kan glida (transition:--p) */
   .ring { position:absolute; top:calc(env(safe-area-inset-top) + 10px); left:calc(env(safe-area-inset-left) + 14px); width:58px; height:58px; border-radius:50%; z-index:2000;
           background:conic-gradient(var(--gold) calc(var(--p,0) * 1%), rgba(255,255,255,.12) 0); display:grid; place-items:center; transition:--p .4s; }
   .ring span { width:46px; height:46px; border-radius:50%; background:#141a35; display:grid; place-items:center; font-weight:700; font-size:15px; color:var(--gold); }
@@ -220,13 +221,15 @@
     return s;
   }
   const saveStats = s => store.set('klondike.stats', s);
-  const save = () => st && store.set('klondike.game', { st, hist: hist.slice(-300) });
+  const save = () => st && store.set('klondike.game', { st, hist });
 
   // Animationer, tips, ljud och kortens utseende är övergripande inställningar (startsidan). Dragning och varv är Harpans egna.
   const global = store.get('solitaires.settings') || {};
   const SKEY = 'klondike.settings';
   const settings = Object.assign({ draw: 1, passes: 0 }, store.get(SKEY) || {});
   const SPEED = { normal: 1, fast: .5, off: 0 }[global.anim] ?? 1;
+  // Hur många drag som går att ångra (startsidans inställningar): 0 = av, 1 eller 5
+  const UNDO = [0, 1, 5].includes(global.undo) ? global.undo : 5;
   const HINTS = global.hints !== false;
   const FACE = CardFaces.FACES.includes(global.face) ? global.face : 'standard';
   const BACK = CardFaces.BACKS.includes(global.back) ? global.back : 'rings';
@@ -273,6 +276,9 @@
       const useful = k > 0 || rank(col[k].id) !== 13;
       for (let d = 0; d < 7; d++) if (d !== c && useful && toTab(col[k].id, d) && (st.tab[d].length || k > 0))
         res.push({ ids: col.slice(k).map(x => x.id), to: d, pri: k > 0 ? 2 : 1 });
+      // En del av en serie får också flyttas, om kortet under den då kan läggas upp på sin grundhög
+      for (let j = k + 1; j < col.length; j++) if (toFound(col[j - 1].id))
+        for (let d = 0; d < 7; d++) if (d !== c && toTab(col[j].id, d)) res.push({ ids: col.slice(j).map(x => x.id), to: d, pri: 2 });
     }
     if (w !== undefined) for (let d = 0; d < 7; d++) if (toTab(w, d)) { res.push({ ids: [w], to: d, pri: 1 }); break; }
     return res.sort((a, b) => b.pri - a.pri);
@@ -297,7 +303,7 @@
     render({ delay }); save();
   }
   function snapshot() { return JSON.stringify({ tab: st.tab, found: st.found, stock: st.stock, waste: st.waste, score: st.score, pass: st.pass }); }
-  function pushHist() { hist.push(snapshot()); if (hist.length > 500) hist.shift(); }
+  function pushHist() { if (!UNDO) return; hist.push(snapshot()); if (hist.length > UNDO) hist.shift(); }
   function after(anim) {
     clearHint(); render(anim); save();
     if (homed() === 52 && !st.won) win();
@@ -334,7 +340,7 @@
   }
   // Dra ett eller tre kort från draghögen, eller vänd kasthögen till en ny draghög om det finns varv kvar
   function draw() {
-    if (!st || st.won || finishing) return;
+    if (drag || !st || st.won || finishing) return;
     if (st.stock.length) { pushHist(); for (let i = 0; i < st.draw && st.stock.length; i++) st.waste.push(st.stock.pop()); }
     else if (canTurn()) { pushHist(); st.stock = st.waste.reverse(); st.waste = []; st.pass++; }
     else return;
@@ -342,7 +348,8 @@
     after({ vol: .6 });
   }
   function undo() {
-    if (!hist.length || st.won || finishing) return;
+    if (!UNDO) { toast(t('toastUndoOff')); return; }
+    if (drag || !hist.length || st.won || finishing) return;
     const moves = st.moves;
     Object.assign(st, JSON.parse(hist.pop()));
     st.moves = moves + 1;
@@ -353,8 +360,11 @@
   function autoFinish() {
     if (finishing) return;
     finishing = true;
+    const game = st;
     const step = () => {
-      if (!st || st.won) { finishing = false; return; }
+      if (st !== game) return;   // ett nytt spel har startat
+      if (st.won) { finishing = false; return; }
+      if (paused) { setTimeout(step, 300); return; }   // vänta medan lobbyn eller en dialog är öppen
       const c = st.tab.findIndex(col => col.length && toFound(last(col).id));
       if (c < 0) { finishing = false; return; }
       const id = last(st.tab[c]).id;
@@ -489,7 +499,7 @@
     $('stock-slot').classList.toggle('empty', !st.stock.length && !turn);
     $('draw-lbl').textContent = st.stock.length ? t('draw', st.stock.length) : t('turn');
     $('b-draw').disabled = st.won || (!st.stock.length && !turn);
-    $('b-undo').disabled = !hist.length || st.won;
+    $('b-undo').disabled = UNDO > 0 && (!hist.length || st.won);
   }
   let toastTimer = 0;
   function toast(msg) {
@@ -577,6 +587,7 @@
     $('w-change').innerHTML = $('lo-change').innerHTML = change;
     $('w-new').innerHTML = $('lo-new').innerHTML = next;
     $('lo-undo').innerHTML = btnText(t('undo'), t('undoSub'));
+    $('lo-undo').style.display = UNDO ? '' : 'none';
   }
   function open(id) { if (id === 'win' || id === 'lost') fillEnd(); paused = true; $(id).classList.add('open'); }
   const inProgress = () => st && !st.won && st.moves > 0 && !stuck();
@@ -611,6 +622,7 @@
   $('b-undo').onclick = undo;
   $('b-hint').onclick = hint;
   if (!HINTS) $('b-hint').classList.add('off');
+  if (!UNDO) $('b-undo').classList.add('off');
   $('b-menu').onclick = showLobby;
   $('b-new').onclick = () => { if (inProgress()) open('confirm'); else newGame(); };
   $('l-resume').onclick = () => { close('lobby'); if (stuck()) showLost(); };
@@ -656,7 +668,7 @@
   layout();
   const saved = store.get('klondike.game');
   if (saved && saved.st && saved.st.deck && saved.st.deck.length === 52 && saved.st.tab && !saved.st.won && saved.st.moves > 0) {
-    st = saved.st; hist = saved.hist || [];
+    st = saved.st; hist = UNDO ? (saved.hist || []).slice(-UNDO) : [];
     buildCards();
     instant(() => render());
     if (canFinish()) autoFinish();

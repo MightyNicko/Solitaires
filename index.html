@@ -115,6 +115,7 @@
   .panel h2 { margin:0 0 4px; text-align:center; color:var(--gold); font:400 24px Georgia,serif; letter-spacing:.24em; text-indent:.24em; text-transform:uppercase; }
   .panel .orn { text-align:center; color:var(--gold); font-size:11px; letter-spacing:.6em; opacity:.7; margin-bottom:18px; }
   .group { margin-top:18px; }
+  @media (orientation:portrait) { #settings .group { margin-top:16px; } }   /* så att inställningarna ryms på en stående iPad */
   .group .label { font-size:12px; letter-spacing:.14em; text-transform:uppercase; opacity:.75; margin-bottom:8px; display:flex; justify-content:space-between; }
   .group .label em { font-style:normal; letter-spacing:0; text-transform:none; opacity:.8; }
   .seg { display:flex; background:rgba(255,255,255,.06); border-radius:12px; padding:4px; }
@@ -212,7 +213,7 @@
     <button class="deco line" id="open-settings"><span data-i18n="settings">Settings</span><small data-i18n="settingsSub">Appearance &amp; data</small></button>
   </div>
 </main>
-<div class="version">v1.5.1028.0956</div>
+<div class="version">v1.5.1028.1057</div>
 </div>
 
 <div class="overlay" id="stats"><div class="panel wide">
@@ -238,6 +239,10 @@
   <div class="group">
     <div class="label" data-i18n-html="sHints">Hints <em>the Hint button in all games</em></div>
     <div class="seg" data-key="hints"><button data-v="true" data-i18n="on">On</button><button data-v="false" data-i18n="off">Off</button></div>
+  </div>
+  <div class="group">
+    <div class="label" data-i18n-html="sUndo">Undo <em>moves you can take back</em></div>
+    <div class="seg" data-key="undo"><button data-v="0" data-i18n="off">Off</button><button data-v="1" data-i18n="undo1">1 move</button><button data-v="5" data-i18n="undo5">5 moves</button></div>
   </div>
   <div class="group">
     <div class="label" data-i18n-html="sSound">Sound <em>card sounds in all games</em></div>
@@ -279,7 +284,7 @@
   // Övergripande inställningar. Spelens egna val sparas av respektive spel (t.ex. spider.settings).
   const SKEY = 'solitaires.settings';
   const g0 = store.get(SKEY) || {};
-  const settings = { anim: g0.anim || 'normal', effects: g0.effects !== false, hints: g0.hints !== false, sound: g0.sound !== false,
+  const settings = { anim: g0.anim || 'normal', effects: g0.effects !== false, hints: g0.hints !== false, undo: [0, 1, 5].includes(g0.undo) ? g0.undo : 5, sound: g0.sound !== false,
                      face: g0.face || 'standard', back: g0.back || 'rings', lang: I18N.lang };
 
   // Alla spel finns i games.js (GAMES)
@@ -367,7 +372,7 @@
       location.reload();
       return;
     }
-    settings[key] = key === 'effects' || key === 'hints' || key === 'sound' ? v === 'true' : v;
+    settings[key] = key === 'effects' || key === 'hints' || key === 'sound' ? v === 'true' : key === 'undo' ? +v : v;
     store.set(SKEY, Object.assign(store.get(SKEY) || {}, settings));
     refreshSettings(); applyEffects();
   }));

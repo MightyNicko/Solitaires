@@ -26,6 +26,7 @@
   #board.noanim .card { transition:none !important; }
 
   /* HUD */
+  @property --p { syntax:'<number>'; inherits:false; initial-value:0; }   /* så att ringen kan glida (transition:--p) */
   .ring { position:absolute; top:calc(env(safe-area-inset-top) + 10px); left:calc(env(safe-area-inset-left) + 14px); width:58px; height:58px; border-radius:50%; z-index:2000;
           background:conic-gradient(var(--gold) calc(var(--p,0) * 1%), rgba(255,255,255,.12) 0); display:grid; place-items:center; transition:--p .4s; }
   .ring span { width:46px; height:46px; border-radius:50%; background:#141a35; display:grid; place-items:center; font-weight:700; font-size:15px; color:var(--gold); }
@@ -192,13 +193,15 @@
     return s;
   }
   const saveStats = s => store.set('spider.stats', s);
-  const save = () => st && store.set('spider.game', { st, hist: hist.slice(-300) });
+  const save = () => st && store.set('spider.game', { st, hist });
 
   // Animationer är en övergripande inställning (startsidan). Svårighetsgrad och tryck-för-att-flytta är Spiders egna.
   const global = store.get('solitaires.settings') || {};
   const SKEY = 'spider.settings';
   const settings = Object.assign({ suits: global.suits || 2, tapMove: global.tapMove !== false }, store.get(SKEY) || {});
   const SPEED = { normal: 1, fast: .5, off: 0 }[global.anim] ?? 1;
+  // Hur många drag som går att ångra (startsidans inställningar): 0 = av, 1 eller 5
+  const UNDO = [0, 1, 5].includes(global.undo) ? global.undo : 5;
   const HINTS = global.hints !== false;   // tips kan stängas av i startsidans inställningar
   // Kortens fram- och baksida väljs i startsidans inställningar
   const FACE = CardFaces.FACES.includes(global.face) ? global.face : 'standard';
@@ -259,7 +262,7 @@
     render({ delay }); save();
   }
   function snapshot() { return JSON.stringify({ cols: st.cols, stock: st.stock, done: st.done, score: st.score, moves: st.moves }); }
-  function pushHist() { hist.push(snapshot()); if (hist.length > 500) hist.shift(); }
+  function pushHist() { if (!UNDO) return; hist.push(snapshot()); if (hist.length > UNDO) hist.shift(); }
   function after(anim) {
     clearHint(); render(anim); save();
     if (st.done.length === 104 && !st.won) win();
@@ -287,7 +290,7 @@
     }, wait * SPEED + 60);
   }
   function deal() {
-    if (busy || !st.stock.length || st.won) return;
+    if (drag || busy || !st.stock.length || st.won) return;
     if (st.cols.some(c => !c.length)) { toast(t('toastNeedCards')); return; }
     pushHist();
     const delay = {};
@@ -297,7 +300,8 @@
     completeLater([...Array(10).keys()], 9 * 45 + 300);
   }
   function undo() {
-    if (busy || !hist.length || st.won) return;
+    if (!UNDO) { toast(t('toastUndoOff')); return; }
+    if (drag || busy || !hist.length || st.won) return;
     const moves = st.moves;
     Object.assign(st, JSON.parse(hist.pop()));
     st.score--; st.moves = moves + 1;
@@ -437,7 +441,7 @@
     $('ring').style.setProperty('--p', sets / 8 * 100);
     $('deal-lbl').textContent = t('deal', st.stock.length / 10);
     $('b-deal').disabled = !st.stock.length || st.won;
-    $('b-undo').disabled = !hist.length || st.won;
+    $('b-undo').disabled = UNDO > 0 && (!hist.length || st.won);
   }
   let toastTimer = 0;
   function toast(msg) {
@@ -542,6 +546,7 @@
   $('b-undo').onclick = undo;
   $('b-hint').onclick = hint;
   if (!HINTS) $('b-hint').classList.add('off');
+  if (!UNDO) $('b-undo').classList.add('off');
   $('b-menu').onclick = showLobby;
   $('b-new').onclick = () => { if (inProgress()) open('confirm'); else newGame(settings.suits); };
   $('l-resume').onclick = () => close('lobby');
@@ -585,7 +590,7 @@
   layout();
   const saved = store.get('spider.game');
   if (saved && saved.st && saved.st.deck && saved.st.deck.length === 104 && !saved.st.won && saved.st.moves > 0) {
-    st = saved.st; hist = saved.hist || [];
+    st = saved.st; hist = UNDO ? (saved.hist || []).slice(-UNDO) : [];
     for (let c = 0; c < 10; c++) checkComplete(c, {}, 0);
     buildCards();
     instant(() => render());

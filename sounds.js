@@ -23,7 +23,17 @@ const CardSounds = (() => {
   }
 
   function place(ms = 0, vol = 1) {
-    if (!on || !ac || ac.state !== 'running' || !sounds.length) return;
+    if (!on || !ac || !sounds.length) return;
+    // Ljudet startar först vid en beröring (iOS). Har det inte hunnit starta (t.ex. när samma tryck startar utdelningen)
+    // spelas ljudet när det har startat. Ljud som då har hunnit bli för gamla hoppas över.
+    if (ac.state !== 'running') {
+      const t0 = performance.now();
+      ac.resume().then(() => {
+        const left = ms - (performance.now() - t0);
+        if (left > -150 && ac.state === 'running') place(Math.max(0, left), vol);
+      }).catch(() => {});
+      return;
+    }
     const now = ac.currentTime, hit = now + ms / 1000;
     while (planned.length && planned[0] < now - 1) planned.shift();
     if (planned.some(t => Math.abs(t - hit) < GAP)) return;

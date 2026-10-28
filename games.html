@@ -215,8 +215,9 @@
       const delay = `animation-delay:${i * 60}ms`;
       if (g.soon) return `<div class="tile soon" style="width:${tw}px;height:${th}px;${delay}"><div class="pic" style="height:${ph}px">${mini(g.id, tw, ph)}</div>
           <div class="txt" style="height:${txt}px"><div class="nm" style="${nmFit(g.name)}">${g.name}</div><div class="sb">${t('soon')}</div></div><div class="rib">${t('soon')}</div></div>`;
-      const saved = store.get(g.gameKey), st = saved && saved.st, going = st && !st.won && st.moves > 0;
-      const sub = going ? `${t('continue')} · ${g.sub(st)}` : g.sub(null, store.get(g.settingsKey) || {});
+      // Ett trasigt sparat spel får inte stoppa sidan: då visas rutan som för ett nytt spel
+      let going = false, sub = g.sub(null, store.get(g.settingsKey) || {});
+      try { const st = (store.get(g.gameKey) || {}).st; if (st && !st.won && st.moves > 0) { sub = `${t('continue')} · ${g.sub(st)}`; going = true; } } catch (e) {}
       return `<button class="tile" data-url="${g.url}" style="width:${tw}px;height:${th}px;${delay}"><div class="pic" style="height:${ph}px">${mini(g.id, tw, ph)}</div>
           <div class="txt" style="height:${txt}px"><div class="nm" style="${nmFit(g.name)}">${g.name}</div><div class="sb">${sub}</div><div class="go">${going ? t('continue') : t('play')}</div></div></button>`;
     }).join('');

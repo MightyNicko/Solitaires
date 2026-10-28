@@ -26,6 +26,7 @@
   #board.noanim .card { transition:none !important; }
 
   /* HUD */
+  @property --p { syntax:'<number>'; inherits:false; initial-value:0; }   /* så att ringen kan glida (transition:--p) */
   .ring { position:absolute; top:calc(env(safe-area-inset-top) + 10px); left:calc(env(safe-area-inset-left) + 14px); width:58px; height:58px; border-radius:50%; z-index:2000;
           background:conic-gradient(var(--gold) calc(var(--p,0) * 1%), rgba(255,255,255,.12) 0); display:grid; place-items:center; transition:--p .4s; }
   .ring span { width:46px; height:46px; border-radius:50%; background:#141a35; display:grid; place-items:center; font-weight:700; font-size:15px; color:var(--gold); }
@@ -216,13 +217,15 @@
     return s;
   }
   const saveStats = s => store.set('tripeaks.stats', s);
-  const save = () => st && store.set('tripeaks.game', { st, hist: hist.slice(-300) });
+  const save = () => st && store.set('tripeaks.game', { st, hist });
 
   // Animationer, tips, ljud och kortens utseende är övergripande inställningar (startsidan). Varianten är TriPeaks egen.
   const global = store.get('solitaires.settings') || {};
   const SKEY = 'tripeaks.settings';
   const settings = Object.assign({ variant: 'classic' }, store.get(SKEY) || {});
   const SPEED = { normal: 1, fast: .5, off: 0 }[global.anim] ?? 1;
+  // Hur många drag som går att ångra (startsidans inställningar): 0 = av, 1 eller 5
+  const UNDO = [0, 1, 5].includes(global.undo) ? global.undo : 5;
   const HINTS = global.hints !== false;
   const FACE = CardFaces.FACES.includes(global.face) ? global.face : 'standard';
   const BACK = CardFaces.BACKS.includes(global.back) ? global.back : 'rings';
@@ -280,7 +283,7 @@
     render({ delay }); save();
   }
   function snapshot() { return JSON.stringify({ peaks: st.peaks, stock: st.stock, waste: st.waste, score: st.score, streak: st.streak }); }
-  function pushHist() { hist.push(snapshot()); if (hist.length > 500) hist.shift(); }
+  function pushHist() { if (!UNDO) return; hist.push(snapshot()); if (hist.length > UNDO) hist.shift(); }
   function after(anim) {
     clearHint(); render(anim); save();
     if (cleared() === N && !st.won) win();
@@ -305,13 +308,14 @@
   }
   // Dra ett kort från draghögen till kasthögen. Serien bryts.
   function draw() {
-    if (!st || st.won || !st.stock.length) return;
+    if (drag || !st || st.won || !st.stock.length) return;
     pushHist(); st.waste.push(st.stock.pop()); st.streak = 0;
     st.moves++;
     after({ vol: .6 });
   }
   function undo() {
-    if (!hist.length || st.won) return;
+    if (!UNDO) { toast(t('toastUndoOff')); return; }
+    if (drag || !hist.length || st.won) return;
     const moves = st.moves;
     Object.assign(st, JSON.parse(hist.pop()));
     st.moves = moves + 1;
@@ -411,7 +415,7 @@
     $('stock-slot').classList.toggle('empty', !st.stock.length);
     $('draw-lbl').textContent = t('draw', st.stock.length);
     $('b-draw').disabled = st.won || !st.stock.length;
-    $('b-undo').disabled = !hist.length || st.won;
+    $('b-undo').disabled = UNDO > 0 && (!hist.length || st.won);
   }
   let toastTimer = 0;
   function toast(msg) {
@@ -477,6 +481,7 @@
     $('w-change').innerHTML = $('lo-change').innerHTML = change;
     $('w-new').innerHTML = $('lo-new').innerHTML = next;
     $('lo-undo').innerHTML = btnText(t('undo'), t('undoSub'));
+    $('lo-undo').style.display = UNDO ? '' : 'none';
   }
   function open(id) { if (id === 'win' || id === 'lost') fillEnd(); paused = true; $(id).classList.add('open'); }
   const inProgress = () => st && !st.won && st.moves > 0 && !stuck();
@@ -512,6 +517,7 @@
   $('b-undo').onclick = undo;
   $('b-hint').onclick = hint;
   if (!HINTS) $('b-hint').classList.add('off');
+  if (!UNDO) $('b-undo').classList.add('off');
   $('b-menu').onclick = showLobby;
   $('b-new').onclick = () => { if (inProgress()) open('confirm'); else newGame(); };
   $('l-resume').onclick = () => { close('lobby'); if (stuck()) showLost(); };
@@ -557,7 +563,7 @@
   layout();
   const saved = store.get('tripeaks.game');
   if (saved && saved.st && saved.st.deck && saved.st.deck.length === 52 && saved.st.peaks && !saved.st.won && saved.st.moves > 0) {
-    st = saved.st; hist = saved.hist || [];
+    st = saved.st; hist = UNDO ? (saved.hist || []).slice(-UNDO) : [];
     buildCards();
     instant(() => render());
   }
