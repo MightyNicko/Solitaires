@@ -61,7 +61,7 @@
   /* Kort */
   .slot { position:absolute; width:var(--cw); height:var(--ch); border-radius:calc(var(--cw) * .09); border:1px solid rgba(245,213,138,.35); background:rgba(255,255,255,.03); }
   .card { position:absolute; left:0; top:0; width:var(--cw); height:var(--ch); border-radius:calc(var(--cw) * .09); cursor:pointer;
-          transition:left var(--dur,.3s) cubic-bezier(.2,.8,.2,1), top var(--dur,.3s) cubic-bezier(.2,.8,.2,1), transform var(--dur,.3s) cubic-bezier(.2,.8,.2,1), opacity var(--dur,.3s);
+          transition:translate var(--dur,.3s) cubic-bezier(.2,.8,.2,1), transform var(--dur,.3s) cubic-bezier(.2,.8,.2,1), opacity var(--dur,.3s);
           box-shadow:0 3px 9px rgba(0,0,0,.45); }   /* fram- och baksidor: se cards.css */
   .card.stock { opacity:0; pointer-events:none; }
   .card.gone { opacity:0; transform:scale(.25); pointer-events:none; }
@@ -69,7 +69,7 @@
   .card.hint, .slot.hint { box-shadow:0 0 0 3px var(--gold), 0 0 22px var(--gold); }
   .card.target, .slot.target { box-shadow:0 0 0 3px rgba(245,213,138,.85), 0 0 14px rgba(245,213,138,.6); }
   .card.shake { animation:shake .32s; }
-  @keyframes shake { 25% { translate:-5px 0; } 50% { translate:5px 0; } 75% { translate:-3px 0; } }
+  @keyframes shake { 25% { transform:translateX(-5px); } 50% { transform:translateX(5px); } 75% { transform:translateX(-3px); } }   /* translate håller kortets plats */
 
   /* Toast & dialoger */
   .toast { position:fixed; left:50%; bottom:calc(104px + env(safe-area-inset-bottom)); transform:translate(-50%,20px); opacity:0; transition:.25s;
@@ -279,7 +279,7 @@
     const pyrDown = ROW.map(([r]) => variant === 'hidden' && r % 2 === 1);
     st = { deck, pyr: ids.splice(0, 28), down: pyrDown, stock: ids, waste: [], gone: [], score: 0, moves: 0, time: 0, pass: 1, passes, variant, won: false };
     hist = []; sel = -1; clearHint(); buildCards();
-    instant(() => els.forEach(e => { e.style.left = M.sx + 'px'; e.style.top = M.sy + 'px'; e.className = 'card'; }));
+    instant(() => els.forEach(e => { place(e, M.sx, M.sy); e.className = 'card'; }));
     const delay = {};
     st.pyr.forEach((id, i) => delay[id] = i * 30);
     render({ delay }); save();
@@ -412,21 +412,21 @@
     put($('stock-n'), sx + cw - 16, sy - 10);
   }
   const MOVE_VOL = .4;   // spelarens egna flyttar (och ångra) låter svagare än utdelningen
+  // Kortets plats sätts med translate, som iPaden kan animera mjukt utan att räkna om sidan. Platsen sparas i _x och _y.
+  const place = (e, x, y) => { e._x = x; e._y = y; e.style.translate = x + 'px ' + y + 'px'; };
   function render(anim = {}) {
     const delay = anim.delay || {};
     const quiet = board.classList.contains('noanim');
     const set = (id, x, y, z, cls) => {
       const e = els[id];
       // Ett kort som flyttas låter när det landar: efter sin fördröjning och ca 60 % av rörelsen
-      if (!quiet && (Math.abs(parseFloat(e.style.left) - x) > 8 || Math.abs(parseFloat(e.style.top) - y) > 8))
+      if (!quiet && (Math.abs(e._x - x) > 8 || Math.abs(e._y - y) > 8))
         CardSounds.place(((delay[id] || 0) + 180) * SPEED, (cls.includes('gone') ? .6 : 1) * (anim.vol ?? 1));
       // Skriv bara det som har ändrats, så att webbläsaren inte behöver räkna om kort som ligger still
-      const l = x + 'px', tp = y + 'px', zs = String(z), dl = (delay[id] || 0) * SPEED + 'ms';
-      if (e.style.left !== l) e.style.left = l;
-      if (e.style.top !== tp) e.style.top = tp;
+      const zs = String(z), dl = (delay[id] || 0) * SPEED + 'ms';
+      if (e._x !== x || e._y !== y) place(e, x, y);
       if (e.style.zIndex !== zs) e.style.zIndex = zs;
       if (e.className !== cls) e.className = cls;
-      if (e.style.transform) e.style.transform = '';
       if (e.style.transitionDelay !== dl) e.style.transitionDelay = dl;
     };
     const mark = id => (id === sel ? ' sel' : '') + (HINTS && sel >= 0 && id !== sel && pairOk(sel, id) ? ' match' : '');
@@ -491,7 +491,7 @@
     drag.dx = e.clientX - drag.x0; drag.dy = e.clientY - drag.y0;
     if (!drag.moving && (Math.hypot(drag.dx, drag.dy) < 8 || !takeable(drag.id))) return;
     if (!drag.moving) { drag.moving = true; drag.el.classList.add('dragging'); drag.el.style.zIndex = 5000; clearHintMarks(); }
-    drag.el.style.transform = `translate(${drag.dx}px,${drag.dy}px)`;
+    drag.el.style.translate = `${drag.el._x + drag.dx}px ${drag.el._y + drag.dy}px`;
     clearTarget();
     const tg = dropTarget(e, drag);
     if (tg >= 0) els[tg].classList.add('target');
@@ -501,10 +501,8 @@
     const g = drag; drag = null; clearTarget();
     if (g.moving) {
       const tg = cancel ? -1 : dropTarget(e, g);
-      // Flytta in fingrets förskjutning i left/top innan animationen, så att den startar där kortet släpptes (som i Spider)
-      g.el.style.left = parseFloat(g.el.style.left) + g.dx + 'px';
-      g.el.style.top = parseFloat(g.el.style.top) + g.dy + 'px';
-      g.el.style.transform = '';
+      // Flytta in fingrets förskjutning i kortets plats innan animationen, så att den startar där kortet släpptes (som i Spider)
+      place(g.el, g.el._x + g.dx, g.el._y + g.dy);
       void board.offsetWidth;
       if (tg >= 0) remove([g.id, tg]); else render({ vol: MOVE_VOL });
     } else if (!cancel) tap(g.id);
