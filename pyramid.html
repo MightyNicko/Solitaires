@@ -147,7 +147,7 @@
     for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
     // Dolda rader: rad 6 (nederst), 4, 2 och 0 ligger med framsidan upp, rad 5, 3 och 1 med baksidan upp
     const pyrDown = ROW.map(([r]) => variant === 'hidden' && r % 2 === 1);
-    st = { deck, pyr: ids.splice(0, 28), down: pyrDown, stock: ids, waste: [], gone: [], score: 0, moves: 0, time: 0, pass: 1, passes, variant, won: false, counted: false };
+    st = { deck, pyr: ids.splice(0, 28), down: pyrDown, stock: ids, waste: [], gone: [], score: 0, moves: 0, time: 0, pass: 1, passes, variant, won: false, counted: false, id: Date.now() };
     hist = []; sel = -1; clearHint(); buildCards();
     instant(() => els.forEach(e => { place(e, M.sx, M.sy); e.className = 'card'; }));
     const delay = {};

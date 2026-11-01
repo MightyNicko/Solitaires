@@ -43,11 +43,15 @@ const Game = (() => {
     const instant = fn => { board.classList.add('noanim'); fn(); void board.offsetWidth; board.classList.remove('noanim'); };
     // Topplistan: de 10 bästa spelen per nivå. Klarade spel ligger före ej klarade. Klarade rangordnas efter poäng (sedan tid),
     // ej klarade efter hur långt man kom (sedan poäng), så att ett spel som avbryts direkt inte hamnar högt.
-    // Varje spel har ett id och bara en rad i listan: ett spel som läggs in igen (t.ex. klarat efter Inga fler drag och Ångra) ersätter sin gamla rad.
+    // Varje spel har ett id (sätts när korten delas ut) och bara en rad i listan: ett spel som läggs in igen (t.ex. klarat efter
+    // Inga fler drag och Ångra) ersätter sin gamla rad. En rad med samma resultat (och nästan samma tid, klockan kan ha hunnit
+    // gå en sekund) räknas också som samma spel, så att ett spel som sparades innan det fick sitt id inte hamnar två gånger på listan.
     const record = (level, st, won) => {
       st.id = st.id || Date.now();
-      const all = store.get(INFO.topKey) || {}, list = (all[level] || []).filter(r => r.id !== st.id);
-      list.push({ id: st.id, won, score: st.score, time: st.time, moves: st.moves, prog: INFO.prog(st), date: Date.now() });
+      const e = { id: st.id, won, score: st.score, time: st.time, moves: st.moves, prog: INFO.prog(st), date: Date.now() };
+      const same = r => r.id === e.id || (['won', 'score', 'moves', 'prog'].every(k => r[k] === e[k]) && Math.abs(r.time - e.time) <= 2);
+      const all = store.get(INFO.topKey) || {}, list = (all[level] || []).filter(r => !same(r));
+      list.push(e);
       list.sort((a, b) => (b.won - a.won) || (a.won ? b.score - a.score || a.time - b.time : b.prog - a.prog || b.score - a.score));
       all[level] = list.slice(0, 10);
       store.set(INFO.topKey, all);

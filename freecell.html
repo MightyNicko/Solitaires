@@ -168,7 +168,7 @@
     // Korten delas ut rad för rad över de åtta kolumnerna: de fyra första får sju kort, de andra sex
     const tab = [...Array(8)].map(() => []);
     ids.forEach((id, i) => tab[i % 8].push(id));
-    st = { deck, tab, cells: [null, null, null, null], found: [[], [], [], []], ncells, score: 0, moves: 0, time: 0, won: false, counted: false };
+    st = { deck, tab, cells: [null, null, null, null], found: [[], [], [], []], ncells, score: 0, moves: 0, time: 0, won: false, counted: false, id: Date.now() };
     hist = []; finishing = false; clearHint(); buildCards();
     instant(() => els.forEach(e => { place(e, (M.W / 2 - M.cw / 2), (M.H + 40)); e.className = 'card up'; }));
     const delay = {};

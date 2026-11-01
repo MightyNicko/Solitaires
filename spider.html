@@ -136,7 +136,7 @@
     const cols = [...Array(10)].map(() => []);
     for (let k = 0; k < 54; k++) cols[k % 10].push({ id: ids.pop(), up: false });
     cols.forEach(col => col[col.length - 1].up = true);
-    st = { deck, cols, stock: ids, done: [], score: 500, moves: 0, time: 0, suits, won: false, counted: false };
+    st = { deck, cols, stock: ids, done: [], score: 500, moves: 0, time: 0, suits, won: false, counted: false, id: Date.now() };
     hist = []; clearHint(); buildCards();
     instant(() => els.forEach(e => { place(e, M.sx, M.sy); e.className = 'card stock'; }));
     const delay = {};
