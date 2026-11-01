@@ -1,5 +1,11 @@
 // Gemensamt för alla sidor: offline-stödet, och stjärnhimlen på startsidan och sidan Spela
 const Base = {
+  // Lagringen i webbläsaren (localStorage) som JSON. Fel (t.ex. full lagring eller privat läge) ignoreras.
+  store: {
+    get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+    del(k) { try { localStorage.removeItem(k); } catch (e) {} },
+  },
   // Stjärnhimmel: små vita och guldiga stjärnor, och (på startsidan) några fyruddiga gnistor, alla i egen takt
   stars(count, gold, sparks = 0) {
     const sky = document.querySelector('.stars'), rnd = (a, b) => a + Math.random() * (b - a);

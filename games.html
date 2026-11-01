@@ -89,7 +89,7 @@
   const t = I18N.t;
   I18N.apply();
   const $ = id => document.getElementById(id);
-  const store = { get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } } };
+  const store = Base.store;
   const global = store.get('solitaires.settings') || {};
   const FACE = CardFaces.FACES.includes(global.face) ? global.face : 'standard';
   const BACK = CardFaces.BACKS.includes(global.back) ? global.back : 'rings';

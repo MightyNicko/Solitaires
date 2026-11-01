@@ -31,15 +31,7 @@
   <div class="badge" id="stock-n"></div>
   <div class="plabel" id="stock-lbl" data-i18n="stock">Draw pile</div>
   <div class="plabel" id="waste-lbl" data-i18n="waste">Discard pile</div>
-  <div class="dock">
-    <button id="b-menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span data-i18n="menu">Menu</span></button>
-    <button id="b-undo"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span data-i18n="undo">Undo</span></button>
-    <button id="b-draw" class="deal"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="11" height="15" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v13"/></svg><span id="draw-lbl">Draw</span></button>
-    <button id="b-hint"><svg viewBox="0 0 24 24"><path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z"/></svg><span data-i18n="hint">Hint</span></button>
-    <button id="b-new"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span data-i18n="new">New</span></button>
-  </div>
 </div>
-<div class="toast" id="toast"></div>
 
 <div class="overlay lobby" id="lobby"><div class="panel">
   <div class="medal"><svg viewBox="0 0 48 48" aria-hidden="true"></svg></div>
@@ -56,24 +48,6 @@
   <button class="btn link" id="l-home" data-i18n="allGames">‹ All games</button>
 </div></div>
 
-<div class="overlay" id="confirm"><div class="panel">
-  <h2 data-i18n="confirmTitle">New game?</h2>
-  <p data-i18n="confirmText">The current game will end.</p>
-  <div class="row"><button class="btn" id="c-no" data-i18n="cancel">Cancel</button><button class="btn gold" id="c-yes" data-i18n="newGame">New game</button></div>
-</div></div>
-
-<div class="overlay" id="win"><div class="panel end">
-  <h2 data-i18n="winTitle">Congratulations!</h2>
-  <p><span data-i18n="pyrWin">The pyramid is cleared!</span><br><span id="win-text"></span></p>
-  <div class="row"><button class="btn" id="w-change"></button><button class="btn gold" id="w-new"></button></div>
-</div></div>
-
-<div class="overlay" id="lost"><div class="panel end">
-  <h2 data-i18n="lostTitle">No more moves</h2>
-  <p><span data-i18n="lostText">No pairs remain and the draw pile can no longer help.</span><br><span id="lost-text"></span></p>
-  <div class="row"><button class="btn" id="lo-undo"></button><button class="btn" id="lo-change"></button><button class="btn gold" id="lo-new"></button></div>
-</div></div>
-
 <script>
 (() => {
   const t = I18N.t;
@@ -82,20 +56,14 @@
   const board = $('board');
   // Gemensamt för alla spel (game.js): lagring, startsidans inställningar, kortens plats, meddelanden och skakning.
   // INFO är spelets uppgifter i games.js: nivåer, nivånamn och lobbyns symbol.
-  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO, record, begin } = Game.init(board, 'pyramid');
+  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO, record, recordWin, begin, stats, flow } = Game.init(board, 'pyramid', { mid: 'draw', win: 'pyrWin', lost: 'lostText' });
 
   let st = null, hist = [], els = [], M = null, drag = null, sel = -1;
-  let hintIdx = 0, hintTimer = 0, paused = false;
+  let hintIdx = 0, hintTimer = 0;
 
-  // Statistiken sparas per nivå i samma form som Spiders. Nivån är variant och antal varv genom talongen
+  // Nivån (i statistiken och på topplistan) är variant och antal varv genom talongen
   // (0 = obegränsat), t.ex. "2" för klassisk med 2 varv och "h0" för dolda rader med obegränsat antal varv.
-  const level = INFO.levelKey, LEVELS = INFO.levels.map(l => String(l.key));
-  function loadStats() {
-    const s = store.get('pyramid.stats') || {};
-    for (const k of LEVELS) s[k] = s[k] || { played:0, won:0, best:0, fast:0 };
-    return s;
-  }
-  const saveStats = s => store.set('pyramid.stats', s);
+  const level = INFO.levelKey;
   const save = () => st && store.set('pyramid.game', { st, hist });
 
   // Animationer, tips, ljud och kortens utseende är övergripande inställningar (startsidan). Antal varv är Pyramids eget.
@@ -139,7 +107,7 @@
   const curLevel = () => String(level(st.variant, st.passes)), wantLevel = () => String(level(settings.variant, settings.passes));
   const untouched = () => st && !st.won && !st.moves && curLevel() === wantLevel();
   function newGame() {
-    if (st && !st.won && st.moves > 0) record(level(st.variant, st.passes), st, false);   // ett ej klarat spel hamnar också på topplistan
+    if (st && !st.won && st.moves > 0) record(curLevel(), st, false);   // ett ej klarat spel hamnar också på topplistan
     const { passes, variant } = settings;
     const deck = [];
     for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) deck.push({ s, r });
@@ -206,11 +174,7 @@
   }
   function win() {
     st.won = true; save(); updateHud();
-    record(level(st.variant, st.passes), st, true);   // topplistan
-    const stats = loadStats(), s = stats[level(st.variant, st.passes)];
-    s.won++; if (st.score > s.best) s.best = st.score;
-    if (!s.fast || st.time < s.fast) s.fast = st.time;   // snabbaste vinst i sekunder
-    saveStats(stats);
+    recordWin(curLevel(), st);   // topplistan och statistiken
     setTimeout(() => { $('win-text').textContent = t('winStats', { score: st.score, moves: st.moves, time: fmt(st.time) }); open('win'); }, 900);
   }
   // Tryck på ett kort: kungar försvinner direkt, annars väljs kortet eller paras med det valda
@@ -370,68 +334,10 @@
   window.addEventListener('pointercancel', e => endDrag(e, true));
 
   // ---------- Knappar & dialoger ----------
-  function close(id) { $(id).classList.remove('open'); paused = !!document.querySelector('.overlay.open'); }
   document.querySelectorAll('#lobby [data-key=passes] .btn').forEach(b => b.textContent = t('passes', +b.dataset.v));
-  const levelName = INFO.levelName;
-  // Slutdialogernas knappar: rubrik plus en rad om vad som händer, och Nytt spel visar inställningarna det startas med
-  function fillEnd() {
-    const next = btnText(t('newGame'), levelName(settings.variant, settings.passes)), change = btnText(t('changeGame'), t('pyrChangeSub'));
-    $('w-change').innerHTML = $('lo-change').innerHTML = change;
-    $('w-new').innerHTML = $('lo-new').innerHTML = next;
-    $('lo-undo').innerHTML = btnText(t('undo'), t('undoSub'));
-    $('lo-undo').style.display = UNDO ? '' : 'none';
-  }
-  function open(id) { if (id === 'win' || id === 'lost') fillEnd(); paused = true; $(id).classList.add('open'); }
-  const inProgress = () => st && !st.won && st.moves > 0 && !stuck();
-  // Ett fastlåst spel finns kvar att fortsätta (sidan Spela visar Fortsätt), och då visas Inga fler drag igen
-  const resumable = () => st && !st.won && st.moves > 0;
-  function showLost() {
-    $('lost-text').textContent = t('winStats', { score: st.score, moves: st.moves, time: fmt(st.time) });
-    open('lost');
-  }
-  function refreshLobby() {
-    document.querySelectorAll('#lobby .seg').forEach(seg => {
-      const v = String(settings[seg.dataset.key]);
-      seg.querySelectorAll('.btn').forEach(b => b.classList.toggle('on', b.dataset.v === v));
-    });
-    $('rules').textContent = t('pyrRules') + (settings.variant === 'hidden' ? ' ' + t('pyrHiddenRules') : '');
-    const s = loadStats()[level(settings.variant, settings.passes)];
-    $('st-played').textContent = s.played; $('st-won').textContent = s.won; $('st-best').textContent = s.best || '–';
-    const going = resumable();
-    $('l-resume').style.display = going ? '' : 'none';
-    if (going) $('l-resume').innerHTML = `${t('resume')}<small>${levelName(st.variant, st.passes)} · ${t('pyrProgress', cleared())}</small>`;
-    $('l-play').className = going ? 'btn' : 'btn gold';
-    $('l-play').innerHTML = `${going ? t('newGame') : t('play')}<small>${levelName(settings.variant, settings.passes)}</small>`;
-  }
-  function showLobby() { refreshLobby(); open('lobby'); }
-  document.querySelectorAll('#lobby .seg').forEach(seg => seg.addEventListener('click', e => {
-    const b = e.target.closest('.btn');
-    if (!b) return;
-    settings[seg.dataset.key] = seg.dataset.key === 'passes' ? +b.dataset.v : b.dataset.v;
-    store.set(SKEY, settings);
-    refreshLobby();
-  }));
-  $('b-draw').onclick = draw;
-  $('b-undo').onclick = undo;
-  $('b-hint').onclick = hint;
-  $('b-menu').onclick = showLobby;
-  $('b-new').onclick = () => { if (inProgress()) open('confirm'); else newGame(); };
-  $('l-resume').onclick = () => { close('lobby'); if (stuck()) showLost(); };
-  $('l-play').onclick = () => { if (inProgress()) open('confirm'); else { close('lobby'); if (!untouched()) newGame(); } };
-  $('l-home').onclick = () => { save(); location.href = 'games.html'; };
-  $('c-no').onclick = () => close('confirm');
-  $('c-yes').onclick = () => { close('confirm'); close('lobby'); newGame(); };
-  $('w-new').onclick = () => { close('win'); newGame(); };
-  $('lo-undo').onclick = () => { close('lost'); undo(); };
-  $('lo-new').onclick = () => { close('lost'); newGame(); };
-  $('lo-change').onclick = () => { close('lost'); showLobby(); };
-  $('w-change').onclick = () => { close('win'); showLobby(); };
-  document.addEventListener('keydown', e => {
-    if (paused) return;
-    if (e.key === 'z' || e.key === 'Z') undo();
-    else if (e.key === 'd' || e.key === ' ') { e.preventDefault(); draw(); }
-    else if (e.key === 'h') hint();
-  });
+  // Menyn, dialogerna och knapparna (game.js)
+  const ui = flow({ game: () => st, newGame, undo, hint, draw, stuck, untouched, save, settings, SKEY, parse: (v, key) => key === 'passes' ? +v : v, curLevel, wantLevel, changeSub: 'pyrChangeSub', lobby: () => { $('rules').textContent = t('pyrRules') + (settings.variant === 'hidden' ? ' ' + t('pyrHiddenRules') : ''); } });
+  const { open, showLobby, showLost } = ui;
 
   // Räkna om layouten när skärmen ändrar storlek (game.js lyssnar efter vridning och storleksändring)
   function relayout() {
@@ -440,7 +346,7 @@
     return true;
   }
   // Tidtagning, sparande när appen stängs, omräkning vid vridning och offline-stöd (game.js)
-  Game.watch({ board, game: () => st, paused: () => paused, save, relayout });
+  Game.watch({ board, game: () => st, paused: () => ui.paused(), save, relayout });
 
   // ---------- Start ----------
   layout();

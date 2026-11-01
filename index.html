@@ -221,7 +221,7 @@
     <button class="deco line" id="open-settings"><span data-i18n="settings">Settings</span><small data-i18n="settingsSub">Appearance &amp; data</small></button>
   </div>
 </main>
-<div class="version">v1.5.1101.1249</div>
+<div class="version">v1.5.1101.1505</div>
 </div>
 
 <div class="overlay" id="stats"><div class="panel wide">
@@ -292,11 +292,7 @@
   const $ = id => document.getElementById(id);
   const t = I18N.t;
   I18N.apply();
-  const store = {
-    get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
-    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
-    del(k) { try { localStorage.removeItem(k); } catch (e) {} },
-  };
+  const store = Base.store;
   // Övergripande inställningar. Spelens egna val sparas av respektive spel (t.ex. spider.settings).
   const SKEY = 'solitaires.settings';
   const g0 = store.get(SKEY) || {};
@@ -389,6 +385,19 @@
   const applyEffects = () => document.body.classList.toggle('calm', !settings.effects);
   applyEffects();
 
+  // Engångsstädning (1 nov 2026): samma spel kunde hamna två gånger på topplistan. En rad med samma resultat och nästan samma
+  // tid som en rad högre upp tas bort. Behövs bara en gång per enhet, och kan tas bort när appen har öppnats på iPaden.
+  if (!store.get('solitaires.topclean')) {
+    const same = (a, b) => ['won', 'score', 'moves', 'prog'].every(k => a[k] === b[k]) && Math.abs(a.time - b.time) <= 2;
+    GAMES.forEach(g => {
+      const all = store.get(g.topKey);
+      if (!all) return;
+      for (const k in all) all[k] = all[k].filter((r, i, list) => !list.slice(0, i).some(p => same(p, r)));
+      store.set(g.topKey, all);
+    });
+    store.set('solitaires.topclean', 1);
+  }
+
   // Stjärnhimmel: små vita och guldiga stjärnor plus några fyruddiga gnistor, alla i egen takt (base.js)
   Base.stars(40, 10, 8);
 
@@ -441,7 +450,12 @@
       setTimeout(() => b.textContent = label, 2500);
     };
   }
-  twoStep('reset-stats', () => GAMES.forEach(g => { store.del(g.statsKey); store.del(g.topKey); }), 'resetStatsDone');
+  // Ett pågående spel räknas på nytt efter nollställningen (vid nästa drag, eller när det hamnar på topplistan)
+  twoStep('reset-stats', () => GAMES.forEach(g => {
+    store.del(g.statsKey); store.del(g.topKey);
+    const saved = store.get(g.gameKey);
+    if (saved && saved.st && !saved.st.won && saved.st.moves > 0) { saved.st.counted = false; store.set(g.gameKey, saved); }
+  }), 'resetStatsDone');
   twoStep('reset-games', () => GAMES.forEach(g => store.del(g.gameKey)), 'resetGamesDone');
   $('open-settings').onclick = () => { refreshSettings(); $('settings').classList.add('open'); };
   $('close').onclick = () => $('settings').classList.remove('open');

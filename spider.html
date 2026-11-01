@@ -26,15 +26,7 @@
 <div id="board">
   <div class="ring" id="ring"><span id="sets">0/8</span></div>
   <div class="hud"><div class="l"><span><em data-i18n="score">Score</em><b id="score">500</b></span><span><em data-i18n="moves">Moves</em><b id="moves">0</b></span></div><div class="ttl"><span data-i18n="spider">Spider</span></div><div class="r"><span><em data-i18n="time">Time</em><b id="time">0:00</b></span></div></div>
-  <div class="dock">
-    <button id="b-menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg><span data-i18n="menu">Menu</span></button>
-    <button id="b-undo"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg><span data-i18n="undo">Undo</span></button>
-    <button id="b-deal" class="deal"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="11" height="15" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v13"/></svg><span id="deal-lbl">Deal · 5</span></button>
-    <button id="b-hint"><svg viewBox="0 0 24 24"><path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z"/></svg><span data-i18n="hint">Hint</span></button>
-    <button id="b-new"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span data-i18n="new">New</span></button>
-  </div>
 </div>
-<div class="toast" id="toast"></div>
 
 <div class="overlay lobby" id="lobby"><div class="panel">
   <div class="medal"><svg viewBox="0 0 48 48" aria-hidden="true"></svg></div>
@@ -50,18 +42,6 @@
   <button class="btn link" id="l-home" data-i18n="allGames">‹ All games</button>
 </div></div>
 
-<div class="overlay" id="confirm"><div class="panel">
-  <h2 data-i18n="confirmTitle">New game?</h2>
-  <p data-i18n="confirmText">The current game will end.</p>
-  <div class="row"><button class="btn" id="c-no" data-i18n="cancel">Cancel</button><button class="btn gold" id="c-yes" data-i18n="newGame">New game</button></div>
-</div></div>
-
-<div class="overlay" id="win"><div class="panel end">
-  <h2 data-i18n="winTitle">Congratulations!</h2>
-  <p><span data-i18n="winText">All eight suits are complete.</span><br><span id="win-text"></span></p>
-  <div class="row"><button class="btn" id="w-change"></button><button class="btn gold" id="w-new"></button></div>
-</div></div>
-
 <script>
 (() => {
   const t = I18N.t;
@@ -70,18 +50,11 @@
   const board = $('board');
   // Gemensamt för alla spel (game.js): lagring, startsidans inställningar, kortens plats, meddelanden och skakning.
   // INFO är spelets uppgifter i games.js: nivåer, nivånamn och lobbyns symbol.
-  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO, record, begin } = Game.init(board, 'spider');
+  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO, record, recordWin, begin, stats, flow } = Game.init(board, 'spider', { mid: 'deal', win: 'winText', lost: 'spiderLost' });
 
   let st = null, hist = [], els = [], slots = [], M = null, drag = null;
-  let hints = null, hintIdx = 0, hintTimer = 0, paused = false;
+  let hints = null, hintIdx = 0, hintTimer = 0;
 
-  const LEVELS = INFO.levels.map(l => String(l.key));
-  function loadStats() {
-    const s = store.get('spider.stats') || {};
-    for (const k of LEVELS) s[k] = s[k] || { played:0, won:0, best:0, fast:0 };
-    return s;
-  }
-  const saveStats = s => store.set('spider.stats', s);
   const save = () => st && store.set('spider.game', { st, hist });
 
   // Animationer är en övergripande inställning (startsidan). Svårighetsgrad och tryck-för-att-flytta är Spiders egna.
@@ -126,7 +99,7 @@
   const curLevel = () => String(st.suits), wantLevel = () => String(settings.suits);
   const untouched = () => st && !st.won && !st.moves && curLevel() === wantLevel();
   function newGame(suits) {
-    if (st && !st.won && st.moves > 0) record(st.suits, st, false);   // ett ej klarat spel hamnar också på topplistan
+    if (st && !st.won && st.moves > 0) record(curLevel(), st, false);   // ett ej klarat spel hamnar också på topplistan
     settings.suits = suits; store.set(SKEY, settings);
     const list = suits === 1 ? [0] : suits === 2 ? [0, 1] : [0, 1, 2, 3];
     const deck = [];
@@ -149,6 +122,11 @@
     begin(curLevel(), st);   // första draget: spelet räknas som spelat
     clearHint(); render(anim); save();
     if (st.done.length === 104 && !st.won) win();
+    else if (stuck()) setTimeout(() => {
+      if (!st || st.won || !stuck()) return;
+      record(curLevel(), st, false);   // det förlorade spelet läggs på topplistan direkt
+      showLost();
+    }, 700);
   }
   function doMove(c, i, d) {
     pushHist();
@@ -192,11 +170,7 @@
   }
   function win() {
     st.won = true; save(); updateHud();
-    record(st.suits, st, true);   // topplistan
-    const stats = loadStats(), s = stats[st.suits];
-    s.won++; if (st.score > s.best) s.best = st.score;
-    if (!s.fast || st.time < s.fast) s.fast = st.time;   // snabbaste vinst i sekunder
-    saveStats(stats);
+    recordWin(curLevel(), st);   // topplistan och statistiken
     setTimeout(() => { $('win-text').textContent = t('winStats', { score: st.score, moves: st.moves, time: fmt(st.time) }); open('win'); }, 1200);
   }
   function bestDest(c, i) {
@@ -237,6 +211,29 @@
       }
     });
     return res.sort((a, b) => b.sc - a.sc);
+  }
+  // Inga drag kvar: draghögen är tom och inget drag för spelet framåt finns (samma som Tips letar efter). Ett drag som Tips
+  // hoppar över (en serie flyttas från ett kort den passar på till ett annat) räknas ändå om kortet under sedan kan flyttas.
+  // Det provas genom att draget görs och tas tillbaka.
+  function stuck() {
+    if (st.won || busy || st.stock.length || findMoves().length) return false;
+    for (let s = 0; s < 10; s++) {
+      const col = st.cols[s];
+      let i = col.length - 1;
+      while (i > 0 && seqOk(col[i - 1], col[i])) i--;
+      for (let k = Math.max(i, 1); k < col.length; k++) {
+        if (!col[k - 1].up) continue;
+        for (let d = 0; d < 10; d++) {
+          if (d === s || !st.cols[d].length || !canDrop(col[k].id, d)) continue;
+          const moved = col.splice(k);
+          st.cols[d].push(...moved);
+          const ok = findMoves().length > 0;
+          st.cols[d].splice(-moved.length); col.push(...moved);
+          if (ok) return false;
+        }
+      }
+    }
+    return true;
   }
   function hint() {
     if (!HINTS) { toast(t('toastHintsOff')); return; }
@@ -381,57 +378,10 @@
   window.addEventListener('pointercancel', e => endDrag(e, true));
 
   // ---------- Knappar & dialoger ----------
-  function close(id) { $(id).classList.remove('open'); paused = !!document.querySelector('.overlay.open'); }
-  const colors = INFO.levelName;
-  // Slutdialogernas knappar: rubrik plus en rad om vad som händer, och Nytt spel visar inställningarna det startas med
-  function fillEnd() {
-    const next = btnText(t('newGame'), colors(settings.suits)), change = btnText(t('changeGame'), t('spiderChangeSub'));
-    $('w-change').innerHTML = change;
-    $('w-new').innerHTML = next;
-  }
-  function open(id) { if (id === 'win') fillEnd(); paused = true; $(id).classList.add('open'); }
-  document.querySelectorAll('#lobby [data-key=suits] .btn').forEach(b => b.textContent = colors(+b.dataset.v));
-  const inProgress = () => st && !st.won && st.moves > 0;
-  function refreshLobby() {
-    document.querySelectorAll('#lobby .seg').forEach(seg => {
-      const v = String(settings[seg.dataset.key]);
-      seg.querySelectorAll('.btn').forEach(b => b.classList.toggle('on', b.dataset.v === v));
-    });
-    const s = loadStats()[settings.suits];
-    $('st-played').textContent = s.played; $('st-won').textContent = s.won; $('st-best').textContent = s.best || '–';
-    const going = inProgress();
-    $('l-resume').style.display = going ? '' : 'none';
-    if (going) $('l-resume').innerHTML = `${t('resume')}<small>${colors(st.suits)} · ${t('progress', st.done.length / 13)}</small>`;
-    $('l-play').className = going ? 'btn' : 'btn gold';
-    $('l-play').innerHTML = `${going ? t('newGame') : t('play')}<small>${colors(settings.suits)}</small>`;
-  }
-  function showLobby() { refreshLobby(); open('lobby'); }
-  document.querySelectorAll('#lobby .seg').forEach(seg => seg.addEventListener('click', e => {
-    const b = e.target.closest('.btn');
-    if (!b) return;
-    const key = seg.dataset.key;
-    settings[key] = key === 'tapMove' ? b.dataset.v === 'true' : +b.dataset.v;
-    store.set(SKEY, settings);
-    refreshLobby();
-  }));
-  $('b-deal').onclick = deal;
-  $('b-undo').onclick = undo;
-  $('b-hint').onclick = hint;
-  $('b-menu').onclick = showLobby;
-  $('b-new').onclick = () => { if (inProgress()) open('confirm'); else newGame(settings.suits); };
-  $('l-resume').onclick = () => close('lobby');
-  $('l-play').onclick = () => { if (inProgress()) open('confirm'); else { close('lobby'); if (!untouched()) newGame(settings.suits); } };
-  $('l-home').onclick = () => { save(); location.href = 'games.html'; };
-  $('c-no').onclick = () => close('confirm');
-  $('c-yes').onclick = () => { close('confirm'); close('lobby'); newGame(settings.suits); };
-  $('w-new').onclick = () => { close('win'); newGame(settings.suits); };
-  $('w-change').onclick = () => { close('win'); showLobby(); };
-  document.addEventListener('keydown', e => {
-    if (paused) return;
-    if (e.key === 'z' || e.key === 'Z') undo();
-    else if (e.key === 'd' || e.key === ' ') { e.preventDefault(); deal(); }
-    else if (e.key === 'h') hint();
-  });
+  document.querySelectorAll('#lobby [data-key=suits] .btn').forEach(b => b.textContent = INFO.levelName(+b.dataset.v));
+  // Menyn, dialogerna och knapparna (game.js)
+  const ui = flow({ game: () => st, newGame: () => newGame(settings.suits), undo, hint, draw: deal, stuck, untouched, save, settings, SKEY, parse: (v, key) => key === 'tapMove' ? v === 'true' : +v, curLevel, wantLevel, changeSub: 'spiderChangeSub' });
+  const { open, showLobby, showLost } = ui;
 
   // Räkna om layouten när skärmen ändrar storlek (game.js lyssnar efter vridning och storleksändring)
   function relayout() {
@@ -440,7 +390,7 @@
     return true;
   }
   // Tidtagning, sparande när appen stängs, omräkning vid vridning och offline-stöd (game.js)
-  Game.watch({ board, game: () => st, paused: () => paused, save, relayout });
+  Game.watch({ board, game: () => st, paused: () => ui.paused(), save, relayout });
 
   // ---------- Start ----------
   for (let c = 0; c < 10; c++) { const s = document.createElement('div'); s.className = 'slot'; board.appendChild(s); slots.push(s); }
@@ -451,8 +401,9 @@
     for (let c = 0; c < 10; c++) checkComplete(c, {}, 0);
     buildCards();
     instant(() => render());
+    if (st.done.length === 104) win();   // appen stängdes precis när den sista serien blev klar
   }
-  showLobby();
+  if (!st || !st.won) showLobby();
 })();
 </script>
 </body>
