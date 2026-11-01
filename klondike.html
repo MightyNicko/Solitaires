@@ -82,7 +82,7 @@
   const board = $('board');
   // Gemensamt för alla spel (game.js): lagring, startsidans inställningar, kortens plats, meddelanden och skakning.
   // INFO är spelets uppgifter i games.js: nivåer, nivånamn och lobbyns symbol.
-  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO } = Game.init(board, 'klondike');
+  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO, record } = Game.init(board, 'klondike');
 
   let st = null, hist = [], els = [], M = null, drag = null, finishing = false;
   let hintIdx = 0, hintTimer = 0, paused = false;
@@ -151,6 +151,7 @@
 
   // ---------- Spelflöde ----------
   function newGame() {
+    if (st && !st.won && st.moves > 0) record(level(st.draw, st.passes), st, false);   // ett ej klarat spel hamnar också på topplistan
     const { draw, passes } = settings;
     const stats = loadStats(); stats[level(draw, passes)].played++; saveStats(stats);
     const deck = [];
@@ -178,11 +179,11 @@
       showLost();
     }, 700);
   }
-  // Inget drag för spelet framåt, och inget kort som går att dra fram ur draghögen (eller ur kasthögen, om den får
-  // vändas igen) passar på en grundhög eller i en kolumn. Att dra ändrar inte kolumnerna, så då hjälper det inte att dra mer.
+  // Spelet är slut först när draghögen är tom (som när man lägger patiens för hand: man drar alla kort först),
+  // inget drag för spelet framåt finns, och inget kort i kasthögen hjälper om den får vändas igen.
   function stuck() {
-    if (st.won || findMoves().length) return false;
-    const later = st.stock.concat(st.passes === 0 || st.pass < st.passes ? st.waste : []);
+    if (st.won || st.stock.length || findMoves().length) return false;
+    const later = canTurn() ? st.waste : [];
     return !later.some(id => toFound(id) || [...Array(7).keys()].some(d => toTab(id, d)));
   }
   // Flytta kort. Poäng som i Windows-Harpan: till grundhög +10, från kasthögen till kolumn +5,
@@ -241,6 +242,7 @@
   }
   function win() {
     st.won = true; save(); updateHud();
+    record(level(st.draw, st.passes), st, true);   // topplistan
     const stats = loadStats(), s = stats[level(st.draw, st.passes)];
     s.won++; if (st.score > s.best) s.best = st.score;
     if (!s.fast || st.time < s.fast) s.fast = st.time;   // snabbaste vinst i sekunder

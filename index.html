@@ -164,6 +164,44 @@
   @media (prefers-reduced-motion:reduce) { .rays, .card, .medal, .star { animation:none; } .fade { animation:none; } }
   body.calm .rays, body.calm .card, body.calm .medal, body.calm .star { animation:none; }
 
+  /* Statistik: tryck på en nivå för att se dess topplista */
+  #stats tr[data-lvl] { cursor:pointer; }
+  #stats tr[data-lvl]:active td { background:rgba(245,213,138,.12); }
+  .tap { margin-top:8px; text-align:center; font-size:12px; opacity:.55; }
+  /* Topplistan (prispallen): de 10 bästa spelen på en nivå, i en egen dialog ovanpå statistiken. De tre bästa står på en
+     prispall med guld, silver och brons, plats 4–10 listas under. Klarade spel har en guldbock, ej klarade är nedtonade.
+     Listan har alltid plats för tio spel, så dialogen har samma storlek oavsett hur många spel som finns. */
+  #top { z-index:11; }
+  #top .panel { width:min(720px,100%); border-radius:22px; }
+  #top .sub2 { text-align:center; opacity:.7; margin:-10px 0 16px; }
+  .pod { display:grid; grid-template-columns:1fr 1.15fr 1fr; align-items:end; gap:12px; margin-bottom:12px; text-align:center; }
+  .pod .md { width:58px; height:58px; margin:0 auto 6px; border-radius:50%; display:grid; place-items:center; font:700 24px Georgia,serif; color:#1b1b2e;
+             box-shadow:0 0 18px rgba(0,0,0,.4); }
+  .pod .p1 .md { width:72px; height:72px; font-size:30px; background:radial-gradient(circle at 35% 30%,#fff3c4,var(--gold) 45%,var(--gold2)); }
+  .pod .p2 .md { background:radial-gradient(circle at 35% 30%,#fff,#d9dde6 45%,#9aa1b2); }
+  .pod .p3 .md { background:radial-gradient(circle at 35% 30%,#ffe2c6,#d39a64 45%,#9c6a3e); }
+  .pod .sc { font:400 28px Georgia,serif; color:var(--gold); line-height:1.1; } .pod .p1 .sc { font-size:34px; }
+  .pod .ds { font-size:13px; opacity:.75; margin-top:2px; height:19px; line-height:19px; }   /* fast höjd: dialogen ändrar inte storlek */
+  .pod .un .sc, .pod .none .sc { color:var(--ink); opacity:.75; } .pod .none .md { opacity:.35; }
+  .pod .step { margin-top:8px; border-radius:10px 10px 0 0; border:1px solid rgba(245,213,138,.3); border-bottom:0;
+               background:linear-gradient(180deg,rgba(245,213,138,.22),rgba(245,213,138,.05)); }
+  .pod .p1 .step { height:56px; } .pod .p2 .step { height:38px; } .pod .p3 .step { height:26px; }
+  /* Kolumnerna: plats, poäng, resultat (får mest plats), tid, drag, datum. Allt på en rad. */
+  #top table { table-layout:fixed; } #top td { padding:0; height:36px; white-space:nowrap; }
+  #top td:nth-child(1) { width:8%; } #top td:nth-child(2) { width:13%; } #top td:nth-child(3) { width:31%; }
+  #top td:nth-child(4) { width:14%; } #top td:nth-child(5) { width:16%; } #top td:nth-child(6) { width:18%; }
+  #top td.rk { font:400 18px Georgia,serif; color:var(--gold); }
+  #top tr.un td { opacity:.62; }
+  #top tr.ph { visibility:hidden; }
+  #top td.empty { text-align:center; opacity:.6; }
+  .ok { display:inline-grid; place-items:center; width:18px; height:18px; border-radius:50%; background:var(--gold); color:#1b1b2e; font-size:11px; font-weight:800; vertical-align:-3px; }
+  @media (max-width:520px) {
+    .pod { gap:6px; } .pod .md { width:44px; height:44px; font-size:19px; } .pod .p1 .md { width:54px; height:54px; font-size:23px; }
+    .pod .sc { font-size:22px; } .pod .p1 .sc { font-size:26px; } .pod .ds { font-size:11px; }
+    #top table { font-size:13px; } #top td { height:30px; } #top td.rk { font-size:15px; } .pod .ds { height:16px; line-height:16px; }
+    #top td:nth-child(1) { width:10%; } #top td:nth-child(2) { width:15%; } #top td:nth-child(3) { width:39%; } #top td:nth-child(4) { width:16%; } #top td:nth-child(6) { width:20%; }
+  }
+
 </style>
 </head>
 <body>
@@ -185,7 +223,7 @@
     <button class="deco line" id="open-settings"><span data-i18n="settings">Settings</span><small data-i18n="settingsSub">Appearance &amp; data</small></button>
   </div>
 </main>
-<div class="version">v1.5.1028.1337</div>
+<div class="version">v1.5.1101.0834</div>
 </div>
 
 <div class="overlay" id="stats"><div class="panel wide">
@@ -193,6 +231,14 @@
   <div class="orn">◆ ◆ ◆</div>
   <div id="stats-body"></div>
   <button class="pbtn gold" id="stats-close" data-i18n="done">Done</button>
+</div></div>
+
+<div class="overlay" id="top"><div class="panel">
+  <h2 data-i18n="topTitle">Top list</h2>
+  <div class="orn">◆ ◆ ◆</div>
+  <div class="sub2" id="top-sub"></div>
+  <div id="top-body"></div>
+  <button class="pbtn gold" id="top-close" data-i18n="topClose">Close</button>
 </div></div>
 
 <div class="overlay" id="settings"><div class="panel">
@@ -266,7 +312,7 @@
   let statSel = null;
   function gameStats(g) {
     const data = store.get(g.statsKey) || {};
-    const rows = g.levels.map(l => Object.assign({ played: 0, won: 0, best: 0, fast: 0 }, data[l.key], { label: l.label }));
+    const rows = g.levels.map(l => Object.assign({ played: 0, won: 0, best: 0, fast: 0 }, data[l.key], { label: l.label, key: l.key }));
     const tot = rows.reduce((a, r) => ({
       label: t('total'), played: a.played + r.played, won: a.won + r.won, best: Math.max(a.best, r.best),
       fast: r.fast && (!a.fast || r.fast < a.fast) ? r.fast : a.fast,
@@ -281,12 +327,12 @@
         `<div class="ico"><svg viewBox="0 0 48 48" aria-hidden="true">${g.svg}</svg></div></div><div class="nm">${g.name}</div><div class="sm">${tot.won}/${tot.played} · ${pct(tot.won, tot.played)}</div></button>`;
     }).join('');
     const { g, rows, tot } = all.find(a => a.g.id === sel);
-    const row = (r, cls) => `<tr class="${cls || ''}"><td>${r.label}</td><td>${r.played}</td><td>${r.won}</td>` +
+    const row = (r, cls) => `<tr class="${cls || ''}"${r.key !== undefined ? ` data-lvl="${r.key}"` : ''}><td>${r.label}</td><td>${r.played}</td><td>${r.won}</td>` +
       `<td class="hide-sm">${pct(r.won, r.played)}</td><td><b>${r.best || '–'}</b></td><td>${fmtTime(r.fast)}</td></tr>`;
     const side = `<section class="side"><h3>${g.name}</h3>
       <div class="summary"><div><b>${tot.played}</b>${t('played')}</div><div><b>${tot.won}</b>${t('won')}</div><div><b>${pct(tot.won, tot.played)}</b>${t('winRate')}</div></div>
       <table><thead><tr><th>${t('level')}</th><th>${t('played')}</th><th>${t('won')}</th><th class="hide-sm">${t('winRate')}</th><th>${t('best')}</th><th>${t('fastest')}</th></tr></thead>
-      <tbody>${rows.map(r => row(r)).join('')}${row(tot, 'total')}</tbody></table></section>`;
+      <tbody>${rows.map(r => row(r)).join('')}${row(tot, 'total')}</tbody></table><div class="tap">${t('topTap')}</div></section>`;
     $('stats-body').innerHTML = `<div class="hall">${hall}</div>${side}`;
   }
   // Öppna statistiken: först det mest spelade spelet. Höjden låses till det spel som har flest nivåer (mäts med
@@ -300,7 +346,34 @@
     body.style.minHeight = body.offsetHeight + 'px';
     renderStats();
   }
-  $('stats-body').addEventListener('click', e => { const b = e.target.closest('.tro'); if (b) { statSel = b.dataset.id; renderStats(); } });
+  $('stats-body').addEventListener('click', e => {
+    const b = e.target.closest('.tro'), tr = e.target.closest('tr[data-lvl]');
+    if (b) { statSel = b.dataset.id; renderStats(); }
+    else if (tr) showTop(statSel, tr.dataset.lvl);
+  });
+  // Topplistan för en nivå: de tre bästa på en prispall, plats 4–10 i en tabell. Tabellen har alltid sju rader
+  // (osynliga om det saknas spel), så dialogen har samma storlek oavsett hur många spel som finns.
+  function showTop(id, key) {
+    const g = GAMES.find(x => x.id === id), lvl = g.levels.find(l => String(l.key) === key);
+    const list = (store.get(g.topKey) || {})[key] || [];
+    const date = ms => new Date(ms).toLocaleDateString(I18N.lang, { day: 'numeric', month: 'short' });
+    const res = r => r.won ? `<span class="ok">✓</span> ${t('topWon')}` : g.progText(r.prog);
+    const spot = (r, k) => r
+      ? `<div class="p p${k}${r.won ? '' : ' un'}"><div class="md">${k}</div><div class="sc">${r.score}</div><div class="ds">${res(r)}</div><div class="ds">${fmtTime(r.time)} · ${date(r.date)}</div><div class="step"></div></div>`
+      : `<div class="p p${k} none"><div class="md">${k}</div><div class="sc">–</div><div class="ds"></div><div class="ds"></div><div class="step"></div></div>`;
+    const rows = [...Array(7)].map((_, i) => {
+      const r = list[i + 3];
+      if (r) return `<tr class="${r.won ? '' : 'un'}"><td class="rk">${i + 4}</td><td><b>${r.score}</b></td><td>${res(r)}</td><td>${fmtTime(r.time)}</td>` +
+                    `<td class="hide-sm">${t('topMoves', r.moves)}</td><td>${date(r.date)}</td></tr>`;
+      if (i === 0 && !list.length) return `<tr><td class="empty" colspan="6">${t('topEmpty')}</td></tr>`;
+      return '<tr class="ph"><td>–</td><td>–</td><td>–</td><td>–</td><td class="hide-sm">–</td><td>–</td></tr>';
+    }).join('');
+    $('top-sub').textContent = `${g.name} · ${lvl.label}`;
+    $('top-body').innerHTML = `<div class="pod">${spot(list[1], 2)}${spot(list[0], 1)}${spot(list[2], 3)}</div><table><tbody>${rows}</tbody></table>`;
+    $('top').classList.add('open');
+  }
+  $('top-close').onclick = () => $('top').classList.remove('open');
+  $('top').onclick = e => { if (e.target.id === 'top') $('top').classList.remove('open'); };
   window.addEventListener('resize', () => { if ($('stats').classList.contains('open')) fitStats(); });
   const applyEffects = () => document.body.classList.toggle('calm', !settings.effects);
   applyEffects();
@@ -357,7 +430,7 @@
       setTimeout(() => b.textContent = label, 2500);
     };
   }
-  twoStep('reset-stats', () => GAMES.forEach(g => store.del(g.statsKey)), 'resetStatsDone');
+  twoStep('reset-stats', () => GAMES.forEach(g => { store.del(g.statsKey); store.del(g.topKey); }), 'resetStatsDone');
   twoStep('reset-games', () => GAMES.forEach(g => store.del(g.gameKey)), 'resetGamesDone');
   $('open-settings').onclick = () => { refreshSettings(); $('settings').classList.add('open'); };
   $('close').onclick = () => $('settings').classList.remove('open');

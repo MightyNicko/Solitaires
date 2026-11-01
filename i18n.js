@@ -10,6 +10,8 @@
       progress: n => `${n} of 8 done`,
       played: 'Played', won: 'Won', winRate: 'Win rate', best: 'Best', bestScore: 'Best score',
       fastest: 'Fastest', level: 'Level', total: 'Total',
+      topTitle: 'Top list', topTap: 'Tap a level to see its top list', topEmpty: 'No games at this level yet',
+      topWon: 'Won', topMoves: n => `${n} moves`, topClose: 'Close',
       cardNames: { 1: 'Ace', 11: 'Jack', 12: 'Queen', 13: 'King' },
       // Startsidan
       subtitle: 'Solitaire for iPad', continue: 'Continue',
@@ -78,6 +80,8 @@
       progress: n => `${n} av 8 klara`,
       played: 'Spelade', won: 'Vunna', winRate: 'Vinster', best: 'Bästa', bestScore: 'Bästa poäng',
       fastest: 'Snabbast', level: 'Nivå', total: 'Totalt',
+      topTitle: 'Topplista', topTap: 'Tryck på en nivå för att se dess topplista', topEmpty: 'Inga spel på den här nivån ännu',
+      topWon: 'Klarad', topMoves: n => `${n} drag`, topClose: 'Stäng',
       cardNames: { 1: 'Ess', 11: 'Knekt', 12: 'Dam', 13: 'Kung' },
       subtitle: 'Patienser för iPad', continue: 'Fortsätt',
       stats: 'Statistik', statsSub: 'Resultat & rekord',

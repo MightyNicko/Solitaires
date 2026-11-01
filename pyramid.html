@@ -82,7 +82,7 @@
   const board = $('board');
   // Gemensamt för alla spel (game.js): lagring, startsidans inställningar, kortens plats, meddelanden och skakning.
   // INFO är spelets uppgifter i games.js: nivåer, nivånamn och lobbyns symbol.
-  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO } = Game.init(board, 'pyramid');
+  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO, record } = Game.init(board, 'pyramid');
 
   let st = null, hist = [], els = [], M = null, drag = null, sel = -1;
   let hintIdx = 0, hintTimer = 0, paused = false;
@@ -136,6 +136,7 @@
 
   // ---------- Spelflöde ----------
   function newGame() {
+    if (st && !st.won && st.moves > 0) record(level(st.variant, st.passes), st, false);   // ett ej klarat spel hamnar också på topplistan
     const { passes, variant } = settings;
     const stats = loadStats(); stats[level(variant, passes)].played++; saveStats(stats);
     const deck = [];
@@ -161,13 +162,12 @@
       showLost();
     }, 700);
   }
-  // Inga drag kvar: inget par nu, och inget kort som går att dra fram ur talongen (eller ur kasthögen, om den får
-  // vändas igen) är en kung eller kan paras med ett fritt pyramidkort. Att dra ändrar inte pyramiden,
-  // så då hjälper det inte att dra resten av talongen.
+  // Inga drag kvar: draghögen är tom (man drar alla kort först, som för hand), inget par finns, och inget kort i kasthögen
+  // (om den får vändas igen) är en kung eller kan paras med ett fritt pyramidkort.
   function stuck() {
-    if (st.won || findMoves().length) return false;
+    if (st.won || st.stock.length || findMoves().length) return false;
     const free = st.pyr.filter(id => id !== null && takeable(id));
-    const later = st.stock.concat(st.passes === 0 || st.pass < st.passes ? st.waste : []);
+    const later = canTurn() ? st.waste : [];
     return !later.some(c => rank(c) === 13 || free.some(p => rank(p) + rank(c) === 13));
   }
   // Tar bort ett par (eller en kung). Pyramidkort ger 10 poäng, kort från kasthögen 5, tom pyramid 250 extra.
@@ -202,6 +202,7 @@
   }
   function win() {
     st.won = true; save(); updateHud();
+    record(level(st.variant, st.passes), st, true);   // topplistan
     const stats = loadStats(), s = stats[level(st.variant, st.passes)];
     s.won++; if (st.score > s.best) s.best = st.score;
     if (!s.fast || st.time < s.fast) s.fast = st.time;   // snabbaste vinst i sekunder

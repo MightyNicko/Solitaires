@@ -81,7 +81,7 @@
   const board = $('board');
   // Gemensamt för alla spel (game.js): lagring, startsidans inställningar, kortens plats, meddelanden och skakning.
   // INFO är spelets uppgifter i games.js: nivåer, nivånamn och lobbyns symbol.
-  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO } = Game.init(board, 'freecell');
+  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO, record } = Game.init(board, 'freecell');
 
   let st = null, hist = [], els = [], M = null, drag = null, finishing = false;
   let hintIdx = 0, hintTimer = 0, paused = false;
@@ -156,6 +156,7 @@
 
   // ---------- Spelflöde ----------
   function newGame() {
+    if (st && !st.won && st.moves > 0) record(String(st.ncells), st, false);   // ett ej klarat spel hamnar också på topplistan
     const ncells = +settings.cells;
     const stats = loadStats(); stats[String(ncells)].played++; saveStats(stats);
     const deck = [];
@@ -226,6 +227,7 @@
   }
   function win() {
     st.won = true; save(); updateHud();
+    record(String(st.ncells), st, true);   // topplistan
     const stats = loadStats(), s = stats[String(st.ncells)];
     s.won++; if (st.score > s.best) s.best = st.score;
     if (!s.fast || st.time < s.fast) s.fast = st.time;   // snabbaste vinst i sekunder

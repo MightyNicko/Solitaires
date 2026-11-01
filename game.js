@@ -41,7 +41,16 @@ const Game = (() => {
     if (!UNDO) $('b-undo').classList.add('off');
     // Gör ändringar utan animation (t.ex. när korten läggs på plats efter en vridning)
     const instant = fn => { board.classList.add('noanim'); fn(); void board.offsetWidth; board.classList.remove('noanim'); };
-    return { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO };
+    // Topplistan: de 10 bästa spelen per nivå. Klarade spel ligger före ej klarade. Klarade rangordnas efter poäng (sedan tid),
+    // ej klarade efter hur långt man kom (sedan poäng), så att ett spel som avbryts direkt inte hamnar högt.
+    const record = (level, st, won) => {
+      const all = store.get(INFO.topKey) || {}, list = all[level] || [];
+      list.push({ won, score: st.score, time: st.time, moves: st.moves, prog: INFO.prog(st), date: Date.now() });
+      list.sort((a, b) => (b.won - a.won) || (a.won ? b.score - a.score || a.time - b.time : b.prog - a.prog || b.score - a.score));
+      all[level] = list.slice(0, 10);
+      store.set(INFO.topKey, all);
+    };
+    return { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO, record };
   }
 
   // Tidtagning, sparande och omräkning av layouten. game() ger spelets tillstånd och paused() om en dialog är öppen.
