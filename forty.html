@@ -88,7 +88,7 @@
   const board = $('board');
   // Gemensamt för alla spel (game.js): lagring, startsidans inställningar, kortens plats, meddelanden och skakning.
   // INFO är spelets uppgifter i games.js: nivåer, nivånamn och lobbyns symbol.
-  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO, record } = Game.init(board, 'forty');
+  const { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO, record, begin } = Game.init(board, 'forty');
 
   let st = null, hist = [], els = [], M = null, drag = null, finishing = false;
   let hintIdx = 0, hintTimer = 0, paused = false;
@@ -143,16 +143,18 @@
   }
 
   // ---------- Spelflöde ----------
+  // Spelets nivå och nivån som är vald i lobbyn. Ett orört spel på vald nivå läggs inte om när man trycker Spela.
+  const curLevel = () => String(st.passes), wantLevel = () => String(+settings.passes);
+  const untouched = () => st && !st.won && !st.moves && curLevel() === wantLevel();
   function newGame() {
     if (st && !st.won && st.moves > 0) record(String(st.passes), st, false);   // ett ej klarat spel hamnar också på topplistan
     const passes = +settings.passes;
-    const stats = loadStats(); stats[String(passes)].played++; saveStats(stats);
     const deck = [];
     for (let d = 0; d < 2; d++) for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) deck.push({ s, r });
     const ids = deck.map((_, i) => i);
     for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
     const tab = [...Array(10)].map(() => ids.splice(0, 4));
-    st = { deck, tab, found: [...Array(8)].map(() => []), stock: ids, waste: [], score: 0, moves: 0, time: 0, pass: 1, passes, won: false };
+    st = { deck, tab, found: [...Array(8)].map(() => []), stock: ids, waste: [], score: 0, moves: 0, time: 0, pass: 1, passes, won: false, counted: false };
     hist = []; finishing = false; clearHint(); buildCards();
     instant(() => els.forEach(e => { place(e, M.sx, M.sy); e.className = 'card'; }));
     // Korten delas ut rad för rad, som vid ett riktigt bord
@@ -164,11 +166,13 @@
   function snapshot() { return JSON.stringify({ tab: st.tab, found: st.found, stock: st.stock, waste: st.waste, score: st.score, pass: st.pass }); }
   function pushHist() { if (!UNDO) return; hist.push(snapshot()); if (hist.length > UNDO) hist.shift(); }
   function after(anim) {
+    begin(curLevel(), st);   // första draget: spelet räknas som spelat
     clearHint(); render(anim); save();
     if (homed() === NCARDS && !st.won) win();
     else if (canFinish()) autoFinish();
     else if (stuck()) setTimeout(() => {
       if (!st || st.won || !stuck()) return;
+      record(curLevel(), st, false);   // det förlorade spelet läggs på topplistan direkt
       showLost();
     }, 700);
   }
@@ -450,7 +454,7 @@
   $('b-menu').onclick = showLobby;
   $('b-new').onclick = () => { if (inProgress()) open('confirm'); else newGame(); };
   $('l-resume').onclick = () => { close('lobby'); if (stuck()) showLost(); };
-  $('l-play').onclick = () => { if (inProgress()) open('confirm'); else { close('lobby'); newGame(); } };
+  $('l-play').onclick = () => { if (inProgress()) open('confirm'); else { close('lobby'); if (!untouched()) newGame(); } };
   $('l-home').onclick = () => { save(); location.href = 'games.html'; };
   $('c-no').onclick = () => close('confirm');
   $('c-yes').onclick = () => { close('confirm'); close('lobby'); newGame(); };
@@ -478,7 +482,7 @@
   // ---------- Start ----------
   layout();
   const saved = store.get('forty.game');
-  if (saved && saved.st && saved.st.deck && saved.st.deck.length === NCARDS && saved.st.tab && !saved.st.won && saved.st.moves > 0) {
+  if (saved && saved.st && saved.st.deck && saved.st.deck.length === NCARDS && saved.st.tab && !saved.st.won) {
     st = saved.st; hist = UNDO ? (saved.hist || []).slice(-UNDO) : [];
     buildCards();
     instant(() => render());

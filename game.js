@@ -43,14 +43,25 @@ const Game = (() => {
     const instant = fn => { board.classList.add('noanim'); fn(); void board.offsetWidth; board.classList.remove('noanim'); };
     // Topplistan: de 10 bästa spelen per nivå. Klarade spel ligger före ej klarade. Klarade rangordnas efter poäng (sedan tid),
     // ej klarade efter hur långt man kom (sedan poäng), så att ett spel som avbryts direkt inte hamnar högt.
+    // Varje spel har ett id och bara en rad i listan: ett spel som läggs in igen (t.ex. klarat efter Inga fler drag och Ångra) ersätter sin gamla rad.
     const record = (level, st, won) => {
-      const all = store.get(INFO.topKey) || {}, list = all[level] || [];
-      list.push({ won, score: st.score, time: st.time, moves: st.moves, prog: INFO.prog(st), date: Date.now() });
+      st.id = st.id || Date.now();
+      const all = store.get(INFO.topKey) || {}, list = (all[level] || []).filter(r => r.id !== st.id);
+      list.push({ id: st.id, won, score: st.score, time: st.time, moves: st.moves, prog: INFO.prog(st), date: Date.now() });
       list.sort((a, b) => (b.won - a.won) || (a.won ? b.score - a.score || a.time - b.time : b.prog - a.prog || b.score - a.score));
       all[level] = list.slice(0, 10);
       store.set(INFO.topKey, all);
     };
-    return { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO, record };
+    // Ett spel räknas som spelat i statistiken vid första draget, så att ett spel som bara delas ut inte räknas.
+    // Nya spel har counted: false. Äldre sparade spel saknar fältet och räknades redan när de delades ut.
+    const begin = (level, st) => {
+      if (st.counted !== false || !st.moves) return;
+      st.counted = true;
+      const all = store.get(INFO.statsKey) || {};
+      (all[level] = all[level] || { played:0, won:0, best:0, fast:0 }).played++;
+      store.set(INFO.statsKey, all);
+    };
+    return { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO, record, begin };
   }
 
   // Tidtagning, sparande och omräkning av layouten. game() ger spelets tillstånd och paused() om en dialog är öppen.

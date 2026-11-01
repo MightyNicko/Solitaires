@@ -175,11 +175,9 @@
   #top .panel { width:min(720px,100%); border-radius:22px; }
   #top .sub2 { text-align:center; opacity:.7; margin:-10px 0 16px; }
   .pod { display:grid; grid-template-columns:1fr 1.15fr 1fr; align-items:end; gap:12px; margin-bottom:12px; text-align:center; }
-  .pod .md { width:58px; height:58px; margin:0 auto 6px; border-radius:50%; display:grid; place-items:center; font:700 24px Georgia,serif; color:#1b1b2e;
-             box-shadow:0 0 18px rgba(0,0,0,.4); }
-  .pod .p1 .md { width:72px; height:72px; font-size:30px; background:radial-gradient(circle at 35% 30%,#fff3c4,var(--gold) 45%,var(--gold2)); }
-  .pod .p2 .md { background:radial-gradient(circle at 35% 30%,#fff,#d9dde6 45%,#9aa1b2); }
-  .pod .p3 .md { background:radial-gradient(circle at 35% 30%,#ffe2c6,#d39a64 45%,#9c6a3e); }
+  /* Pokalen i guld, silver eller brons (ritas av cup() i showTop) */
+  .pod .md { display:block; width:58px; height:66px; margin:0 auto 6px; filter:drop-shadow(0 6px 10px rgba(0,0,0,.45)); }
+  .pod .p1 .md { width:74px; height:84px; }
   .pod .sc { font:400 28px Georgia,serif; color:var(--gold); line-height:1.1; } .pod .p1 .sc { font-size:34px; }
   .pod .ds { font-size:13px; opacity:.75; margin-top:2px; height:19px; line-height:19px; }   /* fast höjd: dialogen ändrar inte storlek */
   .pod .un .sc, .pod .none .sc { color:var(--ink); opacity:.75; } .pod .none .md { opacity:.35; }
@@ -196,7 +194,7 @@
   #top td.empty { text-align:center; opacity:.6; }
   .ok { display:inline-grid; place-items:center; width:18px; height:18px; border-radius:50%; background:var(--gold); color:#1b1b2e; font-size:11px; font-weight:800; vertical-align:-3px; }
   @media (max-width:520px) {
-    .pod { gap:6px; } .pod .md { width:44px; height:44px; font-size:19px; } .pod .p1 .md { width:54px; height:54px; font-size:23px; }
+    .pod { gap:6px; } .pod .md { width:44px; height:50px; } .pod .p1 .md { width:56px; height:64px; }
     .pod .sc { font-size:22px; } .pod .p1 .sc { font-size:26px; } .pod .ds { font-size:11px; }
     #top table { font-size:13px; } #top td { height:30px; } #top td.rk { font-size:15px; } .pod .ds { height:16px; line-height:16px; }
     #top td:nth-child(1) { width:10%; } #top td:nth-child(2) { width:15%; } #top td:nth-child(3) { width:39%; } #top td:nth-child(4) { width:16%; } #top td:nth-child(6) { width:20%; }
@@ -223,7 +221,7 @@
     <button class="deco line" id="open-settings"><span data-i18n="settings">Settings</span><small data-i18n="settingsSub">Appearance &amp; data</small></button>
   </div>
 </main>
-<div class="version">v1.5.1101.0834</div>
+<div class="version">v1.5.1101.1237</div>
 </div>
 
 <div class="overlay" id="stats"><div class="panel wide">
@@ -358,9 +356,22 @@
     const list = (store.get(g.topKey) || {})[key] || [];
     const date = ms => new Date(ms).toLocaleDateString(I18N.lang, { day: 'numeric', month: 'short' });
     const res = r => r.won ? `<span class="ok">✓</span> ${t('topWon')}` : g.progText(r.prog);
+    // Klassisk pokal med två handtag, fot och sockel med plakett. Färgerna: glans, huvudfärg, skugga och kant.
+    const cup = k => {
+      const [hi, mid, lo, dk] = { 1: ['#fff6d2', '#f5d58a', '#c9a24a', '#7a5a1c'], 2: ['#fff', '#dfe3ea', '#9aa1b2', '#545b6c'], 3: ['#ffe6cc', '#d9a06a', '#9c6a3e', '#55341a'] }[k];
+      const m = `url(#cup${k})`;
+      return `<svg class="md" viewBox="0 0 64 72"><defs><linearGradient id="cup${k}"><stop offset="0" stop-color="${lo}"/><stop offset=".35" stop-color="${hi}"/>` +
+        `<stop offset=".6" stop-color="${mid}"/><stop offset="1" stop-color="${lo}"/></linearGradient></defs>` +
+        `<path d="M15 11H6v6c0 8 5 13 12 14M49 11h9v6c0 8-5 13-12 14" fill="none" stroke="${m}" stroke-width="4" stroke-linecap="round"/>` +
+        `<path d="M13 5h38v15c0 14-8 22-19 22S13 34 13 20z" fill="${m}" stroke="${dk}" stroke-width=".8"/>` +
+        `<ellipse cx="32" cy="5.5" rx="19" ry="2.4" fill="${dk}" opacity=".35"/><path d="M28 42h8l-1 9h-6z" fill="${m}"/>` +
+        `<rect x="22" y="51" width="20" height="5" rx="1.5" fill="${m}" stroke="${dk}" stroke-width=".6"/>` +
+        `<rect x="16" y="56" width="32" height="12" rx="2" fill="#2a2f4f" stroke="${dk}" stroke-width="1"/>` +
+        `<rect x="22" y="59.5" width="20" height="5" rx="1" fill="${m}" opacity=".85"/></svg>`;
+    };
     const spot = (r, k) => r
-      ? `<div class="p p${k}${r.won ? '' : ' un'}"><div class="md">${k}</div><div class="sc">${r.score}</div><div class="ds">${res(r)}</div><div class="ds">${fmtTime(r.time)} · ${date(r.date)}</div><div class="step"></div></div>`
-      : `<div class="p p${k} none"><div class="md">${k}</div><div class="sc">–</div><div class="ds"></div><div class="ds"></div><div class="step"></div></div>`;
+      ? `<div class="p p${k}${r.won ? '' : ' un'}">${cup(k)}<div class="sc">${r.score}</div><div class="ds">${res(r)}</div><div class="ds">${fmtTime(r.time)} · ${date(r.date)}</div><div class="step"></div></div>`
+      : `<div class="p p${k} none">${cup(k)}<div class="sc">–</div><div class="ds"></div><div class="ds"></div><div class="step"></div></div>`;
     const rows = [...Array(7)].map((_, i) => {
       const r = list[i + 3];
       if (r) return `<tr class="${r.won ? '' : 'un'}"><td class="rk">${i + 4}</td><td><b>${r.score}</b></td><td>${res(r)}</td><td>${fmtTime(r.time)}</td>` +
