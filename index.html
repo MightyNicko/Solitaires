@@ -101,6 +101,8 @@
   .seg { display:flex; background:rgba(255,255,255,.06); border-radius:12px; padding:4px; }
   .seg button { all:unset; flex:1; text-align:center; padding:10px 4px; border-radius:9px; cursor:pointer; font-size:14px; touch-action:manipulation; }
   .seg button.on { background:linear-gradient(180deg,var(--gold),var(--gold2)); color:#1b1b2e; font-weight:700; }
+  .seg[data-key="face"] { flex-wrap:wrap; }   /* fem val: på en smal skärm blir de två rader i stället för att brytas mitt i ett ord */
+  .seg[data-key="face"] button { flex:1 0 auto; padding-inline:7px; white-space:nowrap; }
   table { width:100%; border-collapse:collapse; font-size:14px; font-variant-numeric:tabular-nums; }
   th { font-weight:400; font-size:11px; letter-spacing:.1em; text-transform:uppercase; opacity:.6; text-align:right; padding:0 0 6px; }
   th:first-child, td:first-child { text-align:left; }
@@ -233,7 +235,7 @@
     <button class="deco line" id="open-settings"><span data-i18n="settings">Settings</span><small data-i18n="settingsSub">Appearance &amp; data</small></button>
   </div>
 </main>
-<div class="version">v1.5.1102.1132</div>
+<div class="version">v1.5.1102.1731</div>
 </div>
 
 <div class="overlay" id="stats"><div class="panel wide">
@@ -283,7 +285,7 @@
   </div><div>
   <div class="group">
     <div class="label" data-i18n="sFace">Card front</div>
-    <div class="seg" data-key="face"><button data-v="standard" data-i18n="faceStandard">Standard</button><button data-v="classic" data-i18n="faceClassic">Classic</button><button data-v="modern" data-i18n="faceModern">Modern</button></div>
+    <div class="seg" data-key="face"><button data-v="standard" data-i18n="faceStandard">Standard</button><button data-v="classic" data-i18n="faceClassic">Classic</button><button data-v="modern" data-i18n="faceModern">Modern</button><button data-v="tradition" data-i18n="faceTradition">Traditional</button><button data-v="deco" data-i18n="faceDeco">Art deco</button></div>
   </div>
   <div class="group">
     <div class="label" data-i18n="sBack">Card back</div>

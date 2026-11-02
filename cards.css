@@ -1,6 +1,6 @@
 /* Kortens utseende: framsidor och baksidor. Delas av spelen och av förhandsvisningen i inställningarna.
    Storleken styrs av --cw (kortets bredd). Stilen väljs med klasserna face-* och back-* på en förälder:
-   framsida face-standard | face-classic | face-modern, baksida back-rings | back-classic | back-deco.
+   framsida face-standard | face-classic | face-modern | face-tradition | face-deco, baksida back-rings | back-classic | back-deco.
    Kortets egna mått, skugga och animationer sätts av respektive sida. */
 .card .f { display:none; position:absolute; inset:0; border-radius:inherit; overflow:hidden; }
 .card.up .f { display:block; }
@@ -41,6 +41,11 @@
 .f .ms { top:8%; right:9%; font-size:calc(var(--cw) * .22); }
 .f .mg { right:-13%; bottom:-17%; font-size:calc(var(--cw) * 1.05); opacity:.16; }
 .f .mn { left:11%; bottom:7%; font-size:calc(var(--cw) * .09); font-weight:700; letter-spacing:.18em; text-transform:uppercase; opacity:.75; }
+
+/* ---------- Framsida: Tradition och Art deco (bilder från cards.js) ---------- */
+.face-tradition .card.up { background:#fff; border:none; }
+.face-deco .card.up { background:#fbf4e2; border:none; }
+.f.art { background-position:center; background-size:100% 100%; background-repeat:no-repeat; }
 
 /* ---------- Baksida: Ringar ---------- */
 .back-rings .card:not(.up) { background:radial-gradient(circle at 50% 50%,#3a2c6e 0 24%,transparent 25%),
