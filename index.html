@@ -156,6 +156,18 @@
   .pbtn.warn { background:transparent; border:1px solid rgba(255,255,255,.15); font-size:13px; }
   .pbtn.warn.armed { border-color:#e5484d; color:#ff8a8d; }
   /* Förhandsvisning av korten (utseendet kommer från cards.css) */
+  /* Sparad data: hur mycket appen har sparat av de ca 5 MB som webbläsaren tillåter. Hela stapeln är 5 MB och fylls från
+     vänster, med en guldnyans för varje slags data. Varje del syns alltid med minst 2 px.
+     I två kolumner (liggande iPad) visas en egen ruta under knapparna, annars siffrorna i rubriken och en tunn stapel. */
+  #ds { display:none; margin-top:14px; }
+  #ds .t { display:flex; justify-content:space-between; align-items:baseline; font-size:12px; letter-spacing:.14em; text-transform:uppercase; opacity:.75; }
+  #ds .t b { font:400 15px Georgia,serif; letter-spacing:0; text-transform:none; color:var(--gold); }
+  #ds .bar { display:flex; height:10px; border-radius:5px; overflow:hidden; margin-top:8px; gap:1px; background:rgba(255,255,255,.08); }
+  #ds .lg { display:grid; grid-template-columns:1fr 1fr; gap:4px 14px; margin-top:8px; font-size:12px; opacity:.8; }
+  #ds .lg span::before { content:""; display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:5px; background:var(--c); }
+  #ds-mini { display:flex; height:3px; border-radius:2px; overflow:hidden; gap:1px; margin:-4px 0 0; background:rgba(255,255,255,.08); }
+  #ds .bar i, #ds-mini i { display:block; flex:none; min-width:2px; height:100%; }
+  @media (orientation:landscape) and (min-width:820px) { #ds { display:block; } #ds-mini, #ds-em { display:none; } }
   .pv { display:flex; gap:10px; justify-content:center; margin-top:12px; padding:14px 8px; border-radius:12px;
         background:radial-gradient(circle at 50% 40%,#2a3566 0%,#141a35 70%); --cw:58px; --ch:81px; }
   .pv .card { position:relative; inset:auto; width:var(--cw); height:var(--ch); border-radius:calc(var(--cw) * .09); overflow:hidden;
@@ -221,7 +233,7 @@
     <button class="deco line" id="open-settings"><span data-i18n="settings">Settings</span><small data-i18n="settingsSub">Appearance &amp; data</small></button>
   </div>
 </main>
-<div class="version">v1.5.1101.1505</div>
+<div class="version">v1.5.1102.1132</div>
 </div>
 
 <div class="overlay" id="stats"><div class="panel wide">
@@ -279,9 +291,11 @@
     <div class="pv" id="card-preview"></div>
   </div>
   <div class="group">
-    <div class="label" data-i18n="sData">Data</div>
+    <div class="label"><span data-i18n="sData">Data</span><em id="ds-em"></em></div>
+    <div id="ds-mini"></div>
     <button class="pbtn warn" id="reset-stats" data-i18n="resetStats">Reset statistics for all games</button>
     <button class="pbtn warn" id="reset-games" data-i18n="resetGames">Delete saved games</button>
+    <div id="ds"><div class="t"><span data-i18n="dataSaved">Saved data</span><b id="ds-sum"></b></div><div class="bar" id="ds-bar"></div><div class="lg" id="ds-lg"></div></div>
   </div>
   </div></div>
   <button class="pbtn gold" id="close" data-i18n="done">Done</button>
@@ -434,6 +448,28 @@
     refreshSettings(); applyEffects();
   }));
 
+  // Sparad data: allt appen har i localStorage, uppdelat på sparade spel, topplistor, statistik och inställningar.
+  // Webbläsaren lagrar texten som UTF-16, alltså 2 byte per tecken (nyckel och värde). Safari tillåter ca 5 MB.
+  const DATA_COLORS = ['#f5d58a', '#c9a24a', '#8e7234', '#5d4c28'];
+  function refreshData() {
+    const bytes = [0, 0, 0, 0];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i), n = (k.length + (localStorage.getItem(k) || '').length) * 2;
+        bytes[k.endsWith('.game') ? 0 : k.endsWith('.top') ? 1 : k.endsWith('.stats') ? 2 : 3] += n;
+      }
+    } catch (e) {}
+    const used = bytes.reduce((a, b) => a + b, 0), num = (v, d) => v.toLocaleString(I18N.lang, { maximumFractionDigits: d });
+    const kb = b => b >= 1024 * 1024 ? num(b / 1024 / 1024, 1) + ' MB' : num(b / 1024, b < 10240 ? 1 : 0) + ' kB';
+    const LIMIT = 5 * 1024 * 1024, p = used / LIMIT * 100;
+    const sum = t('dataOf', kb(used));
+    $('ds-em').textContent = sum;
+    $('ds-sum').textContent = `${sum} · ${num(p, p < 1 ? 1 : 0)} %`;
+    const bars = bytes.map((b, i) => b ? `<i style="width:${b / LIMIT * 100}%;background:${DATA_COLORS[i]}"></i>` : '').join('');
+    $('ds-bar').innerHTML = $('ds-mini').innerHTML = bars;
+    $('ds-lg').innerHTML = t('dataParts').map((n, i) => `<span style="--c:${DATA_COLORS[i]}">${n} ${kb(bytes[i])}</span>`).join('');
+  }
+
   // Knappar som raderar något kräver två tryck
   function twoStep(id, action, doneKey) {
     const b = $(id), label = b.textContent;
@@ -445,7 +481,7 @@
         return;
       }
       clearTimeout(timer);
-      action();
+      action(); refreshData();
       b.classList.remove('armed'); b.textContent = t(doneKey);
       setTimeout(() => b.textContent = label, 2500);
     };
@@ -457,7 +493,7 @@
     if (saved && saved.st && !saved.st.won && saved.st.moves > 0) { saved.st.counted = false; store.set(g.gameKey, saved); }
   }), 'resetStatsDone');
   twoStep('reset-games', () => GAMES.forEach(g => store.del(g.gameKey)), 'resetGamesDone');
-  $('open-settings').onclick = () => { refreshSettings(); $('settings').classList.add('open'); };
+  $('open-settings').onclick = () => { refreshSettings(); refreshData(); $('settings').classList.add('open'); };
   $('close').onclick = () => $('settings').classList.remove('open');
   $('settings').onclick = e => { if (e.target.id === 'settings') $('settings').classList.remove('open'); };
   $('open-stats').onclick = () => { $('stats').classList.add('open'); fitStats(); };
