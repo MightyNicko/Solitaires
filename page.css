@@ -1,0 +1,31 @@
+/* Gemensamt för sidan Spela och regelsidan: bakgrund, rubrik och knapparna i rubrikraden. */
+:root { --gold:#f5d58a; --gold2:#c9a24a; --ink:#e9dfc4; --navy:#141a35; --u:min(1vw, calc(100vh / 75)); }
+html, body { margin:0; height:100%; overflow:hidden; overscroll-behavior:none; background:#0b0f22; }
+body { color:var(--ink); font-family:-apple-system,"Segoe UI",system-ui,sans-serif; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; transition:opacity .25s; }
+/* Samma bakgrund, stjärnor och ram som startsidan. Överkanten har samma färg som statusfältet (theme-color #10152e). */
+#app { position:fixed; inset:0; overflow:hidden;
+       background:linear-gradient(180deg,#10152e env(safe-area-inset-top),rgba(16,21,46,0) calc(env(safe-area-inset-top) + 90px)), radial-gradient(circle at 50% 38%,#2a3566 0%,#141a35 50%,#0b0f22 100%); }
+
+/* Rubrik och knappar */
+.head { position:absolute; left:0; right:0; top:calc(env(safe-area-inset-top) + max(5 * var(--u), 36px)); text-align:center; pointer-events:none; }
+.head h1 { margin:0; font:400 max(4.2 * var(--u), 28px)/1 Georgia,serif; color:var(--gold); letter-spacing:.4em; text-indent:.4em; text-transform:uppercase; }
+.head .orn { margin-top:10px; color:var(--gold); font-size:11px; letter-spacing:.6em; text-indent:.6em; opacity:.7; }
+.navbtn { all:unset; position:absolute; z-index:2; top:calc(env(safe-area-inset-top) + max(5 * var(--u), 36px)); left:calc(env(safe-area-inset-left) + max(10 * var(--u), 70px));
+          padding:8px 16px; border:1px solid rgba(245,213,138,.35); border-radius:20px; font-size:15px; cursor:pointer; touch-action:manipulation; background:rgba(20,26,53,.5); }
+.navbtn.right { left:auto; right:calc(env(safe-area-inset-right) + max(10 * var(--u), 70px)); }
+.navbtn:active { transform:scale(.96); }
+/* Smal skärm (telefon på höjden): knapparna blir runda i ramens hörn, så att de inte hamnar på rubriken */
+@media (max-width:600px) {
+  .navbtn { left:calc(env(safe-area-inset-left) + 26px); width:40px; height:40px; padding:0; border-radius:50%; font-size:0; text-align:center; }
+  .navbtn::before { content:"‹"; display:block; font-size:24px; line-height:37px; }
+  .navbtn.right { left:auto; right:calc(env(safe-area-inset-right) + 26px); }
+  .navbtn.right::before { content:"?"; font-size:19px; }
+}
+/* Låg skärm (telefon på bredden): mindre rubrik utan ornament */
+@media (max-height:500px) {
+  .head, .navbtn { top:calc(env(safe-area-inset-top) + 24px); }
+  .head h1 { font-size:24px; }
+  .head .orn { display:none; }
+}
+body.calm .star { animation:none; }
+@media (prefers-reduced-motion:reduce) { .star { animation:none; } }

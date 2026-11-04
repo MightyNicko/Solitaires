@@ -6,6 +6,10 @@ const Base = {
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
     del(k) { try { localStorage.removeItem(k); } catch (e) {} },
   },
+  // Kortens utseende som är valt i inställningarna
+  look(global) {
+    return { FACE: CardFaces.FACES.includes(global.face) ? global.face : 'standard', BACK: CardFaces.BACKS.includes(global.back) ? global.back : 'rings' };
+  },
   // Stjärnhimmel: små vita och guldiga stjärnor, och (på startsidan) några fyruddiga gnistor, alla i egen takt
   stars(count, gold, sparks = 0) {
     const sky = document.querySelector('.stars'), rnd = (a, b) => a + Math.random() * (b - a);

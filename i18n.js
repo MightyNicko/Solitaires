@@ -62,6 +62,7 @@
       idioten: 'Aces Up', discarded: 'Discarded', idEmpty: 'Empty', idWin: 'Only the four aces are left!', idLost: 'The draw pile is empty and no more cards can be discarded.',
       idRules: 'Discard a top card if another top card has the same suit and a higher value. Aces are highest. Move a top card to an empty pile if you want to. Deal four new cards when you choose, one on each pile. You win when only the four aces are left.',
       idProgress: n => `${n} of 48 discarded`, idChangeSub: 'Menu and rules', tallyTitle: 'Card tracker', tallyNew: 'Not seen', tallyTable: 'On the table', tallyGone: 'Grey: discarded',
+      rules: 'Rules', rulesGoal: 'Goal', rulesSetup: 'How the cards lie', rulesStep: n => `Step ${n}`, rulesEnd: 'End of the game', rulesTips: 'Tips', rulesBack: 'Back', rulesNext: 'Next', rulesOf: v => `${v.n} of ${v.of}`,
       // Harpan (Klondike)
       klonRules: 'Build the columns down in alternating colours; only a king may go in an empty column. Build the four foundations up by suit from ace to king. Tap a card to move it where it fits best.',
       klonWin: 'All cards are on the foundations!', klonLost: 'No move helps any more and the draw pile can no longer help.', spiderLost: 'No move helps any more and the draw pile is empty.',
@@ -131,6 +132,7 @@
       idioten: 'Idioten', discarded: 'Kastade', idEmpty: 'Tom plats', idWin: 'Bara de fyra essen är kvar!', idLost: 'Draghögen är tom och inga fler kort kan kastas.',
       idRules: 'Kasta ett översta kort om ett annat översta kort har samma färg och högre valör. Ess är högst. Flytta gärna ett översta kort till en tom plats. Dela ut fyra nya kort när du vill, ett på varje hög. Du vinner när bara de fyra essen är kvar.',
       idProgress: n => `${n} av 48 kastade`, idChangeSub: 'Meny och regler', tallyTitle: 'Kortkoll', tallyNew: 'Inte kommit', tallyTable: 'På bordet', tallyGone: 'Grå: kastat',
+      rules: 'Regler', rulesGoal: 'Mål', rulesSetup: 'Så ligger korten', rulesStep: n => `Steg ${n}`, rulesEnd: 'När spelet är slut', rulesTips: 'Tips', rulesBack: 'Tillbaka', rulesNext: 'Nästa', rulesOf: v => `${v.n} av ${v.of}`,
       klonRules: 'Bygg nedåt i kolumnerna med omväxlande röd och svart. Bara en kung får läggas i en tom kolumn. Bygg de fyra grundhögarna uppåt i samma färg från ess till kung. Tryck på ett kort så flyttas det dit det passar bäst.',
       klonWin: 'Alla kort ligger på grundhögarna!', klonLost: 'Inget drag hjälper längre och draghögen kan inte hjälpa mer.', spiderLost: 'Inget drag hjälper längre och draghögen är tom.',
       klonProgress: n => `${n} av 52 klara`, klonChangeSub: 'Välj antal kort och varv',

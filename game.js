@@ -10,8 +10,7 @@ const Game = (() => {
   // Hur många drag som går att ångra: 0 = av, 1 eller 5
   const UNDO = [0, 1, 5].includes(global.undo) ? global.undo : 5;
   const HINTS = global.hints !== false;
-  const FACE = CardFaces.FACES.includes(global.face) ? global.face : 'standard';
-  const BACK = CardFaces.BACKS.includes(global.back) ? global.back : 'rings';
+  const { FACE, BACK } = Base.look(global);
   const fmt = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
   // Slutdialogernas knappar: rubrik plus en rad om vad som händer
   const btnText = (title, sub) => `${title}<small>${sub}</small>`;

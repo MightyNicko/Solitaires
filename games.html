@@ -13,37 +13,12 @@
 <title>Solitaires</title>
 <link rel="stylesheet" href="cards.css">
 <link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="page.css">
 <script src="i18n.js"></script>
 <script src="cards.js"></script>
 <script src="games.js"></script>
 <script src="base.js"></script>
 <style>
-  :root { --gold:#f5d58a; --gold2:#c9a24a; --ink:#e9dfc4; --navy:#141a35; --u:min(1vw, calc(100vh / 75)); }
-  html, body { margin:0; height:100%; overflow:hidden; overscroll-behavior:none; background:#0b0f22; }
-  body { color:var(--ink); font-family:-apple-system,"Segoe UI",system-ui,sans-serif; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; transition:opacity .25s; }
-  /* Samma bakgrund, stjärnor och ram som startsidan. Överkanten har samma färg som statusfältet (theme-color #10152e). */
-  #app { position:fixed; inset:0; overflow:hidden;
-         background:linear-gradient(180deg,#10152e env(safe-area-inset-top),rgba(16,21,46,0) calc(env(safe-area-inset-top) + 90px)), radial-gradient(circle at 50% 38%,#2a3566 0%,#141a35 50%,#0b0f22 100%); }
-
-  /* Rubrik och tillbaka */
-  .head { position:absolute; left:0; right:0; top:calc(env(safe-area-inset-top) + max(5 * var(--u), 36px)); text-align:center; pointer-events:none; }
-  .head h1 { margin:0; font:400 max(4.2 * var(--u), 28px)/1 Georgia,serif; color:var(--gold); letter-spacing:.4em; text-indent:.4em; text-transform:uppercase; }
-  .head .orn { margin-top:10px; color:var(--gold); font-size:11px; letter-spacing:.6em; text-indent:.6em; opacity:.7; }
-  .back { all:unset; position:absolute; z-index:2; top:calc(env(safe-area-inset-top) + max(5 * var(--u), 36px)); left:calc(env(safe-area-inset-left) + max(10 * var(--u), 70px));
-          padding:8px 16px; border:1px solid rgba(245,213,138,.35); border-radius:20px; font-size:15px; cursor:pointer; touch-action:manipulation; background:rgba(20,26,53,.5); }
-  .back:active { transform:scale(.96); }
-  /* Smal skärm (telefon på höjden): tillbakaknappen blir en rund pil i ramens hörn, så den inte hamnar på rubriken */
-  @media (max-width:600px) {
-    .back { left:calc(env(safe-area-inset-left) + 26px); width:40px; height:40px; padding:0; border-radius:50%; font-size:0; text-align:center; }
-    .back::before { content:"‹"; display:block; font-size:24px; line-height:37px; }
-  }
-  /* Låg skärm (telefon på bredden): mindre rubrik utan ornament, så rutorna får mer höjd */
-  @media (max-height:500px) {
-    .head, .back { top:calc(env(safe-area-inset-top) + 24px); }
-    .head h1 { font-size:24px; }
-    .head .orn { display:none; }
-  }
-
   /* Rutorna: storleken räknas fram i layout() så att 8 spel ryms som 2 × 4 i liggande läge */
   .grid { position:absolute; left:0; right:0; display:grid; place-content:center; overflow:auto; -webkit-overflow-scrolling:touch; scroll-snap-type:y proximity; scrollbar-width:none; }
   .grid::-webkit-scrollbar { display:none; }
@@ -62,9 +37,9 @@
               background:linear-gradient(180deg,var(--gold),var(--gold2)); color:#1b1b2e; }
   /* Kommer snart: två okända kort med baksidan upp och ett frågetecken på det översta */
   .tile.soon { background:radial-gradient(circle at 50% 50%,#2a3566,#141a35 75%); }
-  .tile.soon .back { position:absolute; left:50%; top:50%; width:calc(var(--tw) * .46); height:calc(var(--tw) * .644); border-radius:calc(var(--tw) * .04); box-sizing:border-box;
+  .tile.soon .cb { position:absolute; left:50%; top:50%; width:calc(var(--tw) * .46); height:calc(var(--tw) * .644); border-radius:calc(var(--tw) * .04); box-sizing:border-box;
                      border:2px solid var(--gold2); background:repeating-linear-gradient(45deg,#1b2450 0 5px,#141b40 5px 10px); box-shadow:0 8px 18px rgba(0,0,0,.55); transform:translate(-60%,-50%) rotate(-12deg); }
-  .tile.soon .back.q { transform:translate(-40%,-50%) rotate(8deg); display:grid; place-items:center; font:400 calc(var(--tw) * .34)/1 Georgia,serif; color:var(--gold); text-shadow:0 0 12px rgba(245,213,138,.7); }
+  .tile.soon .cb.q { transform:translate(-40%,-50%) rotate(8deg); display:grid; place-items:center; font:400 calc(var(--tw) * .34)/1 Georgia,serif; color:var(--gold); text-shadow:0 0 12px rgba(245,213,138,.7); }
   .rib { position:absolute; top:18px; right:-40px; transform:rotate(35deg); width:170px; text-align:center; padding:6px 0;
          background:linear-gradient(180deg,var(--gold),var(--gold2)); color:#1b1b2e; font-size:10.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; }
   @keyframes rise { from { opacity:0; transform:translateY(14px); } }
@@ -74,8 +49,7 @@
   .mini .card { position:absolute; width:var(--cw); height:calc(var(--cw) * 1.4); border-radius:calc(var(--cw) * .1); box-shadow:0 1px 3px rgba(0,0,0,.5); }
   .mini .slot { position:absolute; width:var(--cw); height:calc(var(--cw) * 1.4); border-radius:calc(var(--cw) * .1); border:1px solid rgba(245,213,138,.35); }
 
-  @media (prefers-reduced-motion:reduce) { .star, .tile { animation:none; } }
-  body.calm .star { animation:none; }
+  @media (prefers-reduced-motion:reduce) { .tile { animation:none; } }
 
 </style>
 </head>
@@ -84,7 +58,8 @@
 <div id="app">
   <div class="stars"></div>
   <div class="frame"><div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div></div>
-  <button class="back" id="back" data-i18n="home">‹ Home</button>
+  <button class="navbtn" id="back" data-i18n="home">‹ Home</button>
+  <button class="navbtn right" id="rules" data-i18n="rules">Rules</button>
   <div class="head" id="head"><h1 data-i18n="play">Play</h1><div class="orn">◆ ◆ ◆</div></div>
   <div class="grid" id="grid"></div>
 </div>
@@ -96,8 +71,7 @@
   const $ = id => document.getElementById(id);
   const store = Base.store;
   const global = store.get('solitaires.settings') || {};
-  const FACE = CardFaces.FACES.includes(global.face) ? global.face : 'standard';
-  const BACK = CardFaces.BACKS.includes(global.back) ? global.back : 'rings';
+  const { FACE, BACK } = Base.look(global);
   document.body.classList.toggle('calm', global.effects === false);
 
   // Stjärnhimmel som på startsidan (base.js)
@@ -194,7 +168,7 @@
     grid.style.setProperty('--sb', sb + 'px');
     grid.innerHTML = items.map((g, i) => {
       const delay = `animation-delay:${i * 60}ms`;
-      if (g.soon) return `<div class="tile soon" style="--tw:${tw}px;width:${tw}px;height:${th}px;${delay}"><div class="back"></div><div class="back q">?</div><div class="rib">${t('soon')}</div></div>`;
+      if (g.soon) return `<div class="tile soon" style="--tw:${tw}px;width:${tw}px;height:${th}px;${delay}"><div class="cb"></div><div class="cb q">?</div><div class="rib">${t('soon')}</div></div>`;
       // Ett trasigt sparat spel får inte stoppa sidan: då visas rutan som för ett nytt spel
       let going = false, sub = g.sub(null, store.get(g.settingsKey) || {});
       try { const st = (store.get(g.gameKey) || {}).st; if (st && !st.won && st.moves > 0) { sub = `${t('continue')} · ${g.sub(st)}`; going = true; } } catch (e) {}
@@ -209,6 +183,7 @@
   const go = url => { document.body.classList.add('leaving'); setTimeout(() => location.href = url, 220); };
   $('grid').addEventListener('click', e => { const b = e.target.closest('.tile[data-url]'); if (b) go(b.dataset.url); });
   $('back').onclick = () => go('./');
+  $('rules').onclick = () => go('rules.html');
   $('back').setAttribute('aria-label', t('home').replace('‹', '').trim());
 
   // Rita om när sidan byter storlek. Jämför sidans egna mått, inte innerWidth/innerHeight: under en vridning på iPad

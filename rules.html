@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Solitaires">
+<meta name="theme-color" content="#10152e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Solitaires</title>
+<link rel="stylesheet" href="cards.css">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="page.css">
+<script src="i18n.js"></script>
+<script src="cards.js"></script>
+<script src="games.js"></script>
+<script src="base.js"></script>
+<script src="rules.js"></script>
+<style>
+  /* Knappar till vänster, en för varje patiens */
+  #list { position:absolute; display:flex; flex-direction:column; gap:7px; overflow:auto; scrollbar-width:none; }
+  #list::-webkit-scrollbar { display:none; }
+  #list button { all:unset; flex:1 0 auto; min-height:44px; max-height:64px; display:flex; align-items:center; gap:10px; padding:0 12px; box-sizing:border-box; border-radius:12px; cursor:pointer; touch-action:manipulation;
+                 font-size:14px; background:rgba(255,255,255,.05); border:1px solid rgba(245,213,138,.22); }
+  #list svg { width:26px; height:26px; flex:none; overflow:visible; }
+  #list button.on { background:linear-gradient(180deg,var(--gold),var(--gold2)); color:#1b1b2e; font-weight:700; }
+  #list button.on svg { filter:brightness(.2); }
+  /* Fönstret med reglerna: rubrik, flikar, en bild eller text i mitten och knappar nederst */
+  #win { position:absolute; display:flex; flex-direction:column; padding:20px 24px; border-radius:18px; background:linear-gradient(180deg,#1d2550,#141a35); border:1px solid rgba(245,213,138,.5);
+         box-shadow:0 0 0 5px rgba(20,26,53,.9), 0 0 0 6px rgba(245,213,138,.2), 0 18px 40px rgba(0,0,0,.5); }
+  #win h2 { margin:0; font:400 26px Georgia,serif; color:var(--gold); letter-spacing:.12em; text-transform:uppercase; }
+  .tabs { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .tabs button { all:unset; padding:6px 12px; border-radius:14px; font-size:13px; cursor:pointer; touch-action:manipulation; background:rgba(255,255,255,.07); }
+  .tabs button.on { background:var(--gold); color:#1b1b2e; font-weight:700; }
+  #stage { flex:1; min-height:0; display:grid; place-items:center; margin:14px 0; }
+  .say { text-align:center; min-height:84px; }
+  .say strong { display:block; font:400 22px Georgia,serif; color:var(--gold); margin-bottom:4px; }
+  .say p { margin:0; font-size:16px; line-height:1.4; }
+  /* Slut och Tips: bara text, mitt i fönstret */
+  .big { max-width:620px; text-align:center; }
+  .big strong { display:block; font:400 30px Georgia,serif; color:var(--gold); margin-bottom:14px; }
+  .big p { margin:0; font-size:21px; line-height:1.5; }
+  .pager { display:flex; align-items:center; justify-content:space-between; margin-top:8px; }
+  .pager button { all:unset; padding:10px 22px; border-radius:12px; cursor:pointer; touch-action:manipulation; background:rgba(255,255,255,.08); font-size:14px; }
+  .pager button.go { background:linear-gradient(180deg,var(--gold),var(--gold2)); color:#1b1b2e; font-weight:700; }
+  .pager button:disabled { opacity:.35; cursor:default; }
+  .pager span { font-size:13px; opacity:.7; }
+  /* Bilderna: kort, tomma platser och pilar. Storleken styrs av --cw (kortets bredd). */
+  .dia { position:relative; }
+  .dia .card, .dia .sl { position:absolute; width:var(--cw); height:var(--ch); border-radius:calc(var(--cw) * .09); }
+  .dia .card { box-shadow:0 2px 6px rgba(0,0,0,.5); }
+  .dia .card.hi { box-shadow:0 0 0 3px var(--gold), 0 0 18px rgba(245,213,138,.8); }
+  .dia .card.mv { z-index:450; animation:glide var(--glide,2.6s) ease-in-out infinite; }
+  @keyframes glide { 0%,20% { transform:none; } 60%,85% { transform:translate(var(--dx),var(--dy)); } 100% { transform:none; } }
+  .dia .sl { display:grid; place-items:center; border:2px dashed rgba(245,213,138,.6); background:rgba(245,213,138,.05); color:var(--gold); text-align:center; font-size:calc(var(--cw) * .17); line-height:1.15; }
+  .dia .cap { position:absolute; transform:translateX(-50%); white-space:nowrap; font-size:max(calc(var(--cw) * .13),10px); letter-spacing:.08em; text-transform:uppercase; color:rgba(233,223,196,.7); }
+  .dia .no { position:absolute; width:calc(var(--cw) * .36); height:calc(var(--cw) * .36); transform:translate(-50%,-50%); display:grid; place-items:center; border-radius:50%; background:#c8102e; color:#fff; font-weight:800; font-size:calc(var(--cw) * .24); box-shadow:0 0 0 2px #fff; z-index:510; }
+  .dia svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:500; }
+  @media (prefers-reduced-motion:reduce) { .dia .card.mv { animation:none; } }
+  /* Smal skärm: bara symbolerna i listan, och mindre luft i fönstret */
+  @media (max-width:600px) {
+    #list button { justify-content:center; padding:0; } #list span { display:none; }
+    #win { padding:14px; } #win h2 { font-size:20px; } .big strong { font-size:24px; } .big p { font-size:17px; } .say p { font-size:15px; }
+  }
+</style>
+</head>
+<body>
+<div class="remove-blur" aria-hidden="true"></div>
+<div id="app">
+  <div class="stars"></div>
+  <div class="frame"><div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div></div>
+  <button class="navbtn" id="back" data-i18n="play">Play</button>
+  <div class="head" id="head"><h1 data-i18n="rules">Rules</h1><div class="orn">◆ ◆ ◆</div></div>
+  <div id="list"></div>
+  <div id="win"></div>
+</div>
+
+<script>
+(() => {
+  const t = I18N.t;
+  I18N.apply();
+  const $ = id => document.getElementById(id);
+  const global = Base.store.get('solitaires.settings') || {};
+  const { FACE, BACK } = Base.look(global);
+  const SPEED = { normal: 1, fast: .5, off: 0 }[global.anim] ?? 1;
+  document.body.classList.toggle('calm', global.effects === false);
+  Base.stars(30, 10);
+  $('back').textContent = '‹ ' + t('play');
+  $('back').setAttribute('aria-label', t('play'));
+  document.documentElement.style.setProperty('--glide', 2.6 * (SPEED || 1) + 's');
+
+  const CW = 60, CH = 84;
+  let game = GAMES[0].id, page = 0, rule = RULES[game]();
+
+  // Sidorna för en patiens: mål, så ligger korten, varje steg, slut och tips
+  const pages = r => [
+    { tab: t('rulesGoal'), title: t('rulesGoal'), text: r.goal.text, d: r.goal.d },
+    { tab: t('rulesSetup'), title: t('rulesSetup'), text: r.setup.text, d: r.setup.d },
+    ...r.steps.map((s, i) => ({ tab: t('rulesStep', i + 1), title: s.title, text: s.text, d: s.d })),
+    { tab: t('rulesEnd'), title: t('rulesEnd'), text: r.end },
+    { tab: t('rulesTips'), title: t('rulesTips'), text: r.tips },
+  ];
+  // Bildens storlek räknas fram från innehållet, med plats för att kort kan flyttas utanför sin startplats
+  function bounds(items) {
+    let w = 0, h = 0;
+    items.forEach(i => {
+      if (i.t === 'a') return;
+      const dx = i.mv ? Math.max(0, i.mv[0]) : 0, dy = i.mv ? Math.max(0, i.mv[1]) : 0;
+      if (i.t === 'l') { h = Math.max(h, i.y + 18); return; }
+      if (i.t !== 'x') { w = Math.max(w, i.x + CW + dx); h = Math.max(h, i.y + CH + dy); }
+    });
+    return { w, h };
+  }
+  // Ritar en bild så stor som möjligt inom (W, H)
+  function picture(items, W, H) {
+    const { w, h } = bounds(items), z = Math.min(2.6, W / w, H / h), px = v => v * z;
+    let html = '', arrows = '';
+    items.forEach(i => {
+      const pos = `left:${px(i.x)}px;top:${px(i.y)}px`;
+      const moving = i.mv && SPEED;
+      if (i.t === 'c') html += `<div class="card up${i.hi ? ' hi' : ''}${moving ? ' mv' : ''}" style="${pos};z-index:${moving ? 450 : 100 + Math.round(i.y)}${moving ? `;--dx:${px(i.mv[0])}px;--dy:${px(i.mv[1])}px` : ''}">${CardFaces.html(i, FACE)}</div>`;
+      if (i.t === 'b') html += `<div class="card" style="${pos};z-index:${50 + Math.round(i.y)}"></div>`;
+      if (i.t === 'e') html += `<div class="sl" style="${pos}">${i.txt.replace('\n', '<br>')}</div>`;
+      if (i.t === 'l') html += `<div class="cap" style="${pos}">${i.txt}</div>`;
+      if (i.t === 'x') html += `<div class="no" style="${pos}">×</div>`;
+      if (i.t === 'a') arrows += `<path d="M${px(i.x1)} ${px(i.y1)}L${px(i.x2)} ${px(i.y2)}" stroke="#f5d58a" stroke-width="3" stroke-linecap="round" marker-end="url(#tip)"/>`;
+    });
+    const svg = arrows && `<svg><defs><marker id="tip" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#f5d58a"/></marker></defs>${arrows}</svg>`;
+    return `<div class="dia face-${FACE} back-${BACK}" style="--cw:${px(CW)}px;--ch:${px(CH)}px;width:${px(w)}px;height:${px(h)}px">${html}${svg}</div>`;
+  }
+  function render() {
+    const list = pages(rule), p = list[page], info = GAMES.find(g => g.id === game);
+    $('win').innerHTML = `<h2>${info.name}</h2>
+      <div class="tabs">${list.map((x, i) => `<button data-p="${i}" class="${i === page ? 'on' : ''}">${x.tab}</button>`).join('')}</div>
+      <div id="stage">${p.d ? '' : `<div class="big"><strong>${p.title}</strong><p>${p.text}</p></div>`}</div>
+      ${p.d ? `<div class="say"><strong>${p.title}</strong><p>${p.text}</p></div>` : ''}
+      <div class="pager"><button data-p="${page - 1}"${page ? '' : ' disabled'}>‹ ${t('rulesBack')}</button><span>${t('rulesOf', { n: page + 1, of: list.length })}</span>
+      <button class="go" data-p="${page + 1}"${page < list.length - 1 ? '' : ' disabled'}>${t('rulesNext')} ›</button></div>`;
+    if (p.d) { const s = $('stage'); s.innerHTML = picture(p.d, s.clientWidth, s.clientHeight); }
+  }
+  function renderList() {
+    $('list').innerHTML = GAMES.map(g => `<button data-g="${g.id}" class="${g.id === game ? 'on' : ''}" aria-label="${g.name}"><svg viewBox="0 0 48 48">${g.svg}</svg><span>${g.name}</span></button>`).join('');
+  }
+  function layout() {
+    const app = $('app'), W = app.clientWidth, H = app.clientHeight;
+    const fr = document.querySelector('.frame').getBoundingClientRect();
+    const top = $('head').getBoundingClientRect().bottom + 20, bottom = fr.bottom - 24, narrow = W < 600;
+    const side = fr.left + (narrow ? 12 : Math.max(W * .03, 24)), lw = narrow ? 48 : W > H ? 190 : 160, gap = narrow ? 8 : 20, h = bottom - top;
+    Object.assign($('list').style, { left: side + 'px', top: top + 'px', width: lw + 'px', height: h + 'px' });
+    Object.assign($('win').style, { left: side + lw + gap + 'px', top: top + 'px', width: W - 2 * side - lw - gap + 'px', height: h + 'px' });
+    render();
+  }
+  const go = url => { document.body.classList.add('leaving'); setTimeout(() => location.href = url, 220); };
+  $('back').onclick = () => go('games.html');
+  $('list').onclick = e => {
+    const b = e.target.closest('[data-g]');
+    if (!b) return;
+    game = b.dataset.g; page = 0; rule = RULES[game]();
+    renderList(); render();
+  };
+  $('win').onclick = e => {
+    const b = e.target.closest('[data-p]');
+    if (!b || b.disabled) return;
+    page = +b.dataset.p; render();
+  };
+
+  // Rita om när sidan byter storlek (samma sätt som sidan Spela)
+  let size = '';
+  function relayout() {
+    const s = $('app').clientWidth + 'x' + $('app').clientHeight;
+    if (s === size) return;
+    size = s; layout();
+  }
+  const relayoutSoon = () => { relayout(); requestAnimationFrame(relayout); setTimeout(relayout, 350); setTimeout(relayout, 800); };
+  window.addEventListener('resize', relayoutSoon);
+  window.addEventListener('orientationchange', relayoutSoon);
+  window.addEventListener('pageshow', () => { document.body.classList.remove('leaving'); size = ''; relayoutSoon(); });
+  if (window.ResizeObserver) new ResizeObserver(relayout).observe($('app'));
+  renderList();
+  relayout();
+  Base.offline();
+})();
+</script>
+</body>
+</html>
