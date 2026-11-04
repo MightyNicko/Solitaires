@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Solitaires">
+<meta name="theme-color" content="#10152e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Aces Up Solitaire</title>
+<link rel="stylesheet" href="cards.css">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="game.css">
+<style>
+  /* Draghögen och kasthögen är mindre än högarna, så korten ändrar storlek när de flyttas dit */
+  .card { transition:translate var(--dur,.3s) cubic-bezier(.2,.8,.2,1), transform var(--dur,.3s) cubic-bezier(.2,.8,.2,1), opacity var(--dur,.3s), width var(--dur,.3s), height var(--dur,.3s); }
+  .slot.free { display:grid; place-items:center; border:2px dashed rgba(245,213,138,.6); background:rgba(245,213,138,.05); color:var(--gold); font-size:max(calc(var(--cw) * .1),10px); letter-spacing:.06em; text-align:center; }
+  /* Kortkoll: visar vilka kort som är kastade, ligger på bordet eller inte har kommit än */
+  #tally { position:absolute; padding:10px 12px; border-radius:16px; background:rgba(20,26,53,.9); border:1px solid rgba(245,213,138,.4); z-index:1500; pointer-events:none; }
+  #tally h4 { margin:0 0 6px; font:400 13px Georgia,serif; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); }
+  .tgrid { display:grid; gap:3px; align-items:center; }
+  .tgrid.up { grid-template-columns:repeat(4,1fr); }
+  .tgrid.wide { grid-template-columns:20px repeat(13,1fr); }
+  .tgrid u { text-decoration:none; font-size:15px; line-height:1.3; text-align:center; color:var(--ink); }
+  .tgrid u.red { color:#ff7d8c; }
+  .tgrid i { font-style:normal; text-align:center; font-size:min(calc(var(--lh) * .55),14px); font-weight:700; line-height:var(--lh); border-radius:4px; background:#f7f0dc; color:#121a3f; }
+  .tgrid i.red { color:#c8102e; }
+  .tgrid i.gone { background:transparent; color:rgba(233,223,196,.25); }
+  .tgrid i.tbl { background:transparent; color:var(--gold); box-shadow:inset 0 0 0 1.5px var(--gold); }
+  .tleg { display:flex; flex-wrap:wrap; gap:4px 12px; margin-top:8px; font-size:11px; color:rgba(233,223,196,.75); }
+  .tleg b { font-weight:400; display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:4px; vertical-align:-2px; }
+</style>
+<script src="i18n.js"></script>
+<script src="cards.js"></script>
+<script src="sounds.js"></script>
+<script src="games.js"></script>
+<script src="base.js"></script>
+<script src="game.js"></script>
+</head>
+<body>
+<div class="remove-blur" aria-hidden="true"></div>
+<div id="board">
+  <div class="ring" id="ring"><span id="cleared">0/48</span></div>
+  <div class="hud"><div class="l"><span><em data-i18n="discarded">Discarded</em><b id="score">0</b></span><span><em data-i18n="moves">Moves</em><b id="moves">0</b></span></div><div class="ttl"><span data-i18n="idioten">Aces Up</span></div><div class="r"><span><em data-i18n="time">Time</em><b id="time">0:00</b></span><span><em data-i18n="left">Left</em><b id="left">0</b></span></div></div>
+  <div class="slot stock" id="stock-slot"></div>
+  <div class="slot" id="waste-slot"></div>
+  <div class="badge" id="stock-n"></div>
+  <div class="badge" id="gone-n"></div>
+  <div class="plabel" id="stock-lbl" data-i18n="stock">Draw pile</div>
+  <div class="plabel" id="waste-lbl" data-i18n="waste">Discard pile</div>
+  <div class="slot free" id="p0" data-i18n="idEmpty">Empty</div>
+  <div class="slot free" id="p1" data-i18n="idEmpty">Empty</div>
+  <div class="slot free" id="p2" data-i18n="idEmpty">Empty</div>
+  <div class="slot free" id="p3" data-i18n="idEmpty">Empty</div>
+  <div id="tally"></div>
+</div>
+
+<div class="overlay lobby" id="lobby"><div class="panel">
+  <div class="medal"><svg viewBox="0 0 48 48" aria-hidden="true"></svg></div>
+  <h2 data-i18n="idioten">Aces Up</h2>
+  <div class="orn">◆ Solitaire ◆</div>
+  <p class="rules" id="rules"></p>
+  <div class="statgrid"><div><b id="st-played">0</b><span data-i18n="played">Played</span></div><div><b id="st-won">0</b><span data-i18n="won">Won</span></div><div><b id="st-best">–</b><span data-i18n="bestScore">Best score</span></div></div>
+  <button class="btn gold" id="l-resume"></button>
+  <button class="btn gold" id="l-play"></button>
+  <button class="btn link" id="l-home" data-i18n="allGames">‹ All games</button>
+</div></div>
+
+<script>
+(() => {
+  const t = I18N.t;
+  I18N.apply();
+  const $ = id => document.getElementById(id);
+  const board = $('board');
+  // Gemensamt för alla spel (game.js): lagring, startsidans inställningar, kortens plats, meddelanden och skakning.
+  // INFO är spelets uppgifter i games.js: nivåer, nivånamn och lobbyns symbol.
+  const { store, UNDO, HINTS, SPEED, FACE, fmt, place, instant, toast, shake, record, recordWin, begin, flow } = Game.init(board, 'idioten', { mid: 'deal', win: 'idWin', lost: 'idLost' });
+
+  let st = null, hist = [], els = [], M = null, drag = null;
+  let hintIdx = 0, hintTimer = 0;
+
+  const save = () => st && store.set('idioten.game', { st, hist });
+  const SKEY = 'idioten.settings';
+  const settings = {};
+
+  // ---------- Regler ----------
+  // Fyra högar med ett kort var delas ut. Ett översta kort får kastas om ett annat översta kort har samma färg och högre valör (ess högst).
+  // Det översta kortet i en hög får flyttas till en tom plats. Fyra nya kort kan delas ut när som helst, ett på varje hög, även de tomma.
+  // Spelet vinns när bara de fyra essen är kvar, alltså när 48 kort är kastade.
+  const N = 48;
+  const value = id => st.deck[id].r === 1 ? 14 : st.deck[id].r;
+  const suit = id => st.deck[id].s;
+  const tops = cols => cols.filter(col => col.length).map(col => col[col.length - 1]);
+  const discards = cols => { const list = tops(cols); return list.filter(id => list.some(o => suit(o) === suit(id) && value(o) > value(id))); };
+  const colOf = id => st.cols.findIndex(col => col[col.length - 1] === id);
+  const canDiscard = id => discards(st.cols).includes(id);
+  const canMove = c => st.cols[c].length > 1 && st.cols.some(col => !col.length);
+
+  // Söker igenom lägena som går att nå genom att flytta kort till tomma platser, tills något kort kan kastas.
+  // Ger den första flytten dit ({ id, to }, eller {} om ett kort kan kastas direkt), eller null om inget kort går att kasta hur man än flyttar.
+  // Kort kan flyttas fram och tillbaka hur länge som helst, så vanliga lägen räknas bara en gång. Finns väldigt många lägen räknas det som att det går.
+  function search() {
+    const queue = [{ cols: st.cols, first: {} }], seen = new Set(), LIMIT = 4000;
+    const key = cols => cols.map(col => col.join()).sort().join('|');
+    seen.add(key(st.cols));
+    for (let i = 0; i < queue.length; i++) {
+      if (i >= LIMIT) return {};
+      const { cols, first } = queue[i];
+      if (discards(cols).length) return first;
+      const to = cols.findIndex(col => !col.length);
+      if (to < 0) continue;
+      cols.forEach((col, c) => {
+        if (col.length < 2) return;
+        const id = col[col.length - 1], next = cols.map(x => x.slice());
+        next[c].pop(); next[to].push(id);
+        const k = key(next);
+        if (!seen.has(k)) { seen.add(k); queue.push({ cols: next, first: first.id === undefined ? { id, to } : first }); }
+      });
+    }
+    return null;
+  }
+
+  // ---------- Spelflöde ----------
+  // Spelet har bara en nivå
+  const curLevel = () => 'classic', wantLevel = () => 'classic';
+  const untouched = () => st && !st.won && !st.moves;
+  function newGame() {
+    if (st && !st.won && st.moves > 0) record(curLevel(), st, false);   // ett ej klarat spel hamnar också på topplistan
+    const deck = [];
+    for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) deck.push({ s, r });
+    const ids = deck.map((_, i) => i);
+    for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+    st = { deck, cols: [[], [], [], []], stock: ids, gone: [], score: 0, moves: 0, time: 0, won: false, counted: false, id: Date.now() };
+    hist = []; clearHint(); buildCards();
+    instant(() => { st.stock.forEach((id, j) => { els[id].className = 'card'; set(id, M.sx, M.sy, 10 + j, 'card', M.sc, true); }); });
+    render({ delay: putRow() }); save();
+  }
+  // Ett kort från draghögen på varje hög. Ger korten fördröjning så att de delas ut ett i taget.
+  function putRow() {
+    const delay = {};
+    st.cols.forEach((col, c) => { const id = st.stock.pop(); col.push(id); delay[id] = c * 90; });
+    return delay;
+  }
+  function snapshot() { return JSON.stringify({ cols: st.cols, stock: st.stock, gone: st.gone, score: st.score }); }
+  function pushHist() { if (!UNDO) return; hist.push(snapshot()); if (hist.length > UNDO) hist.shift(); }
+  function after(anim) {
+    begin(curLevel(), st);   // första draget: spelet räknas som spelat
+    clearHint(); render(anim); save();
+    if (st.gone.length === N && !st.won) win();
+    else if (stuck()) setTimeout(() => {
+      if (!st || st.won || !stuck()) return;
+      record(curLevel(), st, false);   // det förlorade spelet läggs på topplistan direkt
+      showLost();
+    }, 700);
+  }
+  // Inga drag kvar: draghögen är tom och inget kort går att kasta, inte ens efter flyttar till tomma platser
+  const stuck = () => !st.won && !st.stock.length && !search();
+  function discard(id) {
+    pushHist();
+    st.cols[colOf(id)].pop(); st.gone.push(id);
+    st.score = st.gone.length; st.moves++;
+    after({ vol: MOVE_VOL });
+  }
+  function moveTo(id, to) {
+    pushHist();
+    st.cols[colOf(id)].pop(); st.cols[to].push(id);
+    st.moves++;
+    after({ vol: MOVE_VOL });
+  }
+  function deal() {
+    if (drag || !st || st.won || !st.stock.length) return;
+    pushHist();
+    const delay = putRow();
+    st.moves++;
+    after({ delay, vol: .6 });
+  }
+  function undo() {
+    if (!UNDO) { toast(t('toastUndoOff')); return; }
+    if (drag || !hist.length || st.won) return;
+    const moves = st.moves;
+    Object.assign(st, JSON.parse(hist.pop()));
+    st.moves = moves + 1;
+    after({ vol: MOVE_VOL });
+  }
+  function win() {
+    st.won = true; save(); updateHud();
+    recordWin(curLevel(), st);   // topplistan och statistiken
+    setTimeout(() => { $('win-text').textContent = t('winStats', { score: st.score, moves: st.moves, time: fmt(st.time) }); open('win'); }, 900);
+  }
+
+  // ---------- Tips ----------
+  function hint() {
+    if (!HINTS) { toast(t('toastHintsOff')); return; }
+    if (!st || st.won) return;
+    clearHintMarks();
+    const list = discards(st.cols), way = list.length ? null : search();
+    if (list.length) els[list[hintIdx++ % list.length]].classList.add('hint');
+    else if (way) { els[way.id].classList.add('hint'); $('p' + way.to).classList.add('hint'); }
+    else {
+      if (st.stock.length) {
+        const b = $('b-deal'); b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse');
+        toast(t('toastNoMovesDeal'));
+      } else toast(t('toastNoMoves'));
+      return;
+    }
+    hintTimer = setTimeout(clearHintMarks, 1600);
+  }
+  function clearHintMarks() { clearTimeout(hintTimer); board.querySelectorAll('.hint').forEach(e => e.classList.remove('hint')); }
+  function clearHint() { hintIdx = 0; clearHintMarks(); }
+
+  // ---------- Kortkoll ----------
+  // Står upp längs högerkanten när skärmen ligger och ligger brett under högarna när skärmen står
+  const RANKS = [1, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2], NAMES = { 1: 'A', 13: 'K', 12: 'Q', 11: 'J' };
+  const SYM = ['♠', '♥', '♦', '♣'].map(s => s + '︎');
+  let tallyUp = null, cells = [];
+  function buildTally(up) {
+    tallyUp = up;
+    const red = s => s === 1 || s === 2 ? 'red' : '';
+    const head = s => `<u class="${red(s)}">${SYM[s]}</u>`;
+    const cell = (s, r) => `<i class="${red(s)}" data-id="${s * 13 + r - 1}">${NAMES[r] || r}</i>`;
+    const grid = up ? [0, 1, 2, 3].map(head).join('') + RANKS.map(r => [0, 1, 2, 3].map(s => cell(s, r)).join('')).join('')
+                    : [0, 1, 2, 3].map(s => head(s) + RANKS.map(r => cell(s, r)).join('')).join('');
+    $('tally').innerHTML = `<h4>${t('tallyTitle')}</h4><div class="tgrid ${up ? 'up' : 'wide'}">${grid}</div>` +
+      `<div class="tleg"><span><b style="background:#f7f0dc"></b>${t('tallyNew')}</span><span><b style="box-shadow:inset 0 0 0 1.5px var(--gold)"></b>${t('tallyTable')}</span><span style="opacity:.7">${t('tallyGone')}</span></div>`;
+    cells = [];
+    $('tally').querySelectorAll('i').forEach(e => cells[+e.dataset.id] = e);
+    if (st) updateTally();
+  }
+  function updateTally() {
+    const on = new Set(st.cols.flat()), off = new Set(st.gone);
+    cells.forEach((e, id) => {
+      const red = st.deck[id].s === 1 || st.deck[id].s === 2, cls = off.has(id) ? 'gone' : on.has(id) ? 'tbl' : red ? 'red' : '';
+      if (e.className !== cls) e.className = cls;
+    });
+  }
+
+  // ---------- Layout & rendering ----------
+  function buildCards() {
+    els.forEach(e => e.remove());
+    els = st.deck.map((c, id) => {
+      const e = document.createElement('div');
+      e.className = 'card'; e.dataset.id = id;
+      e.innerHTML = CardFaces.html(c, FACE);
+      board.appendChild(e);
+      return e;
+    });
+  }
+  const put = (e, x, y) => { e.style.left = x + 'px'; e.style.top = y + 'px'; };
+  const size = (e, w) => { e.style.setProperty('--cw', w + 'px'); e.style.setProperty('--ch', w * 1.4 + 'px'); };
+  const STEP = .26;   // hur mycket av kortet under som syns i en hög
+  function layout() {
+    const W = board.clientWidth, H = board.clientHeight, br = board.getBoundingClientRect();
+    // Korten får ytan mellan banderollen och dockan
+    const hudB = document.querySelector('.hud').getBoundingClientRect().bottom - br.top + 16;
+    const T = W <= 640 ? Math.max(hudB, $('ring').getBoundingClientRect().bottom - br.top + 10) : hudB;
+    const B = document.querySelector('.dock').getBoundingClientRect().top - br.top - 12;
+    const land = W > H, tally = $('tally');
+    if (tallyUp !== land) buildTally(land);
+    // Kortkoll först, eftersom korten får det utrymme som blir kvar. På en låg skärm (telefon på bredden) får den inte plats.
+    let zone = W, bottom = B;
+    const m = Math.max(8, W * .02);
+    if (land) {
+      const pw = Math.min(210, W * .2), lh = Math.min(30, Math.floor((B - T - 136) / 13 - 3));
+      tally.style.display = lh < 14 ? 'none' : '';
+      if (lh >= 14) {
+        tally.style.setProperty('--lh', lh + 'px'); tally.style.width = pw + 'px';
+        put(tally, W - pw - m, T); zone = W - pw - m;
+      }
+    } else {
+      tally.style.display = '';
+      tally.style.setProperty('--lh', (W < 500 ? 20 : 28) + 'px'); tally.style.width = W - 2 * m + 'px';
+      const th = tally.offsetHeight;
+      put(tally, m, B - th); bottom = B - th - 12;
+    }
+    // Fyra högar med draghögen och kasthögen i en rad ovanför, i mindre format
+    const gapR = .16, LBL = 26, SMALL = .62;
+    const cw = Math.min((zone - 2 * m) / (4 + 3 * gapR), (bottom - T - LBL) / (1.4 * (SMALL + 1 + 5 * STEP)), 165);
+    const ch = cw * 1.4, gap = cw * gapR, colsW = 4 * cw + 3 * gap, x0 = (zone - colsW) / 2, sc = cw * SMALL;
+    const xs = [0, 1, 2, 3].map(c => x0 + c * (cw + gap)), ty = T + sc * 1.4 + LBL, wx = x0 + colsW - sc;
+    M = { W, H, cw, ch, sc, xs, ty, bottom, sx: x0, sy: T, wx, wy: T };
+    size(board, cw);
+    [$('stock-slot'), $('waste-slot')].forEach(e => size(e, sc));
+    put($('stock-slot'), x0, T); put($('waste-slot'), wx, T);
+    [['stock-lbl', x0], ['waste-lbl', wx]].forEach(([id, x]) => { put($(id), Math.max(2, Math.min(W - 2 * sc - 2, x - sc / 2)), T + sc * 1.4 + 6); $(id).style.width = 2 * sc + 'px'; });
+    put($('stock-n'), x0 + sc - 16, T - 10); put($('gone-n'), wx + sc - 16, T - 10);
+    for (let c = 0; c < 4; c++) put($('p' + c), xs[c], ty);
+  }
+  // Avståndet i en hög. Får inte alla kort plats trycks de ihop.
+  function stepOf(col) {
+    const need = (col.length - 1) * STEP * M.ch, room = M.bottom - M.ty - M.ch;
+    return need > room && need > 0 ? STEP * M.ch * Math.max(0, room) / need : STEP * M.ch;
+  }
+  const MOVE_VOL = .4;   // spelarens egna flyttar (och ångra) låter svagare än utdelningen
+  let delays = {}, volume = 1;
+  function set(id, x, y, z, cls, w, silent) {
+    const e = els[id];
+    const quiet = silent || board.classList.contains('noanim');
+    // Ett kort som flyttas låter när det landar: efter sin fördröjning och ca 60 % av rörelsen
+    if (!quiet && (Math.abs(e._x - x) > 8 || Math.abs(e._y - y) > 8))
+      CardSounds.place(((delays[id] || 0) + 180) * SPEED, volume);
+    // Skriv bara det som har ändrats, så att webbläsaren inte behöver räkna om kort som ligger still
+    const zs = String(z), dl = (delays[id] || 0) * SPEED + 'ms';
+    if (e._w !== w) { e._w = w; size(e, w); }
+    if (e._x !== x || e._y !== y) place(e, x, y);
+    if (e.style.zIndex !== zs) e.style.zIndex = zs;
+    if (e.className !== cls) e.className = cls;
+    if (e.style.transitionDelay !== dl) e.style.transitionDelay = dl;
+  }
+  function render(anim = {}) {
+    delays = anim.delay || {}; volume = anim.vol ?? 1;
+    st.stock.forEach((id, j) => set(id, M.sx, M.sy, 10 + j, 'card', M.sc));
+    st.gone.forEach((id, j) => set(id, M.wx, M.wy, 100 + j, 'card up', M.sc));
+    const can = HINTS ? discards(st.cols) : [];
+    st.cols.forEach((col, c) => {
+      const step = stepOf(col);
+      col.forEach((id, k) => set(id, M.xs[c], M.ty + k * step, 200 + k, 'card up' + (can.includes(id) ? ' can' : ''), M.cw));
+    });
+    updateHud();
+  }
+  function updateHud() {
+    $('score').textContent = st.score;
+    $('moves').textContent = st.moves;
+    $('time').textContent = fmt(st.time);
+    $('left').textContent = st.stock.length;
+    $('cleared').textContent = st.gone.length + '/' + N;
+    $('ring').style.setProperty('--p', st.gone.length / N * 100);
+    $('stock-n').textContent = st.stock.length;
+    $('stock-n').style.display = st.stock.length ? '' : 'none';
+    $('gone-n').textContent = st.gone.length;
+    $('gone-n').style.display = st.gone.length ? '' : 'none';
+    $('stock-slot').classList.toggle('empty', !st.stock.length);
+    $('deal-lbl').textContent = t('deal', st.stock.length / 4);
+    $('b-deal').disabled = st.won || !st.stock.length;
+    $('b-undo').disabled = UNDO > 0 && (!hist.length || st.won);
+    updateTally();
+  }
+
+  // ---------- Touch / mus ----------
+  // Tryck på ett kort för att kasta det. Går det inte flyttas det till den första tomma platsen.
+  // Korten kan också dras till kasthögen eller till en viss tom plats. Tryck på draghögen för att dela ut.
+  const clearTarget = () => board.querySelectorAll('.target').forEach(e => e.classList.remove('target'));
+  const under = e => document.elementsFromPoint(e.clientX, e.clientY);
+  const overWaste = e => under(e).some(n => n.id === 'waste-slot' || (n.closest && n.closest('.card') && st.gone.includes(+n.closest('.card').dataset.id)));
+  const overEmpty = e => { const n = under(e).find(n => /^p[0-3]$/.test(n.id) && !st.cols[+n.id[1]].length); return n ? +n.id[1] : -1; };
+  board.addEventListener('pointerdown', e => {
+    if (drag || !st || st.won) return;
+    if (relayout()) return;   // skärmen har vridits utan att vi märkt det: rätta layouten först
+    const el = e.target.closest('.card');
+    if (e.target.closest('#stock-slot') || (el && st.stock.includes(+el.dataset.id))) { deal(); return; }
+    if (!el) return;
+    const id = +el.dataset.id, c = colOf(id);
+    if (st.gone.includes(id)) return;
+    if (c < 0 || !(canDiscard(id) || canMove(c))) { shake([el]); return; }
+    drag = { id, el, pid: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, moving: false };
+  });
+  window.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.pid) return;
+    drag.dx = e.clientX - drag.x0; drag.dy = e.clientY - drag.y0;
+    if (!drag.moving && Math.hypot(drag.dx, drag.dy) < 8) return;
+    if (!drag.moving) { drag.moving = true; drag.el.classList.add('dragging'); drag.el.style.zIndex = 5000; clearHintMarks(); }
+    drag.el.style.translate = `${drag.el._x + drag.dx}px ${drag.el._y + drag.dy}px`;
+    clearTarget();
+    if (canDiscard(drag.id) && overWaste(e)) (st.gone.length ? els[st.gone[st.gone.length - 1]] : $('waste-slot')).classList.add('target');
+    else if (canMove(colOf(drag.id))) { const to = overEmpty(e); if (to >= 0) $('p' + to).classList.add('target'); }
+  });
+  function endDrag(e, cancel) {
+    if (!drag || e.pointerId !== drag.pid) return;
+    const g = drag; drag = null; clearTarget();
+    const c = colOf(g.id);
+    if (g.moving) {
+      // Flytta in fingrets förskjutning i kortets plats innan animationen, så att den startar där kortet släpptes
+      place(g.el, g.el._x + g.dx, g.el._y + g.dy);
+      void board.offsetWidth;
+      const to = !cancel && canMove(c) ? overEmpty(e) : -1;
+      if (!cancel && canDiscard(g.id) && overWaste(e)) discard(g.id);
+      else if (to >= 0) moveTo(g.id, to);
+      else render({ vol: MOVE_VOL });
+    } else if (!cancel) {
+      if (canDiscard(g.id)) discard(g.id);
+      else if (canMove(c)) moveTo(g.id, st.cols.findIndex(col => !col.length));
+    }
+    setTimeout(relayout, 400);   // om skärmen vreds under draget
+  }
+  window.addEventListener('pointerup', e => endDrag(e, false));
+  window.addEventListener('pointercancel', e => endDrag(e, true));
+
+  // ---------- Knappar & dialoger ----------
+  // Menyn, dialogerna och knapparna (game.js)
+  const ui = flow({ game: () => st, newGame, undo, hint, draw: deal, stuck, untouched, save, settings, SKEY, curLevel, wantLevel, changeSub: 'idChangeSub', lobby: () => { $('rules').textContent = t('idRules'); } });
+  const { open, showLobby, showLost } = ui;
+
+  // Räkna om layouten när skärmen ändrar storlek (game.js lyssnar efter vridning och storleksändring)
+  function relayout() {
+    if (drag || !M || (M.W === board.clientWidth && M.H === board.clientHeight)) return false;
+    layout(); if (st) instant(() => render());
+    return true;
+  }
+  // Tidtagning, sparande när appen stängs, omräkning vid vridning och offline-stöd (game.js)
+  Game.watch({ board, game: () => st, paused: () => ui.paused(), save, relayout });
+
+  // ---------- Start ----------
+  layout();
+  const saved = store.get('idioten.game');
+  if (saved && saved.st && saved.st.deck && saved.st.deck.length === 52 && saved.st.cols && !saved.st.won) {
+    st = saved.st; hist = UNDO ? (saved.hist || []).slice(-UNDO) : [];
+    buildCards();
+    instant(() => render());
+  }
+  showLobby();
+})();
+</script>
+</body>
+</html>

@@ -111,6 +111,10 @@ const Game = (() => {
       list.sort((a, b) => (b.won - a.won) || (a.won ? b.score - a.score || a.time - b.time : b.prog - a.prog || b.score - a.score));
       all[level] = list.slice(0, 10);
       store.set(INFO.topKey, all);
+      if (INFO.bestAny) {
+        const stat = loadStats();
+        if (st.score > stat[level].best) { stat[level].best = st.score; store.set(INFO.statsKey, stat); }
+      }
     };
     // Ett klarat spel: på topplistan, och i statistiken (vinst, bästa poäng och snabbaste tid)
     const recordWin = (level, st) => {

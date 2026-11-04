@@ -47,15 +47,15 @@
       ...lv(n => String(n), n => t('passes', +n), [['1'], ['2']]),
       prog: st => st.found.reduce((n, f) => n + f.length, 0), progText: n => t('ftProgress', n),
       idle: s => t('passes', s.passes || 1) },
-  ];
-  // Platshållare som fyller ut spelsidan till hela rader. Bilden ritas som patiensen med samma id.
-  const SOON = [
-    { id: 'scorpion', name: t('scorpion') },
+    // Idioten vinns sällan, så bästa poäng räknas också på spel som inte klaras (bestAny)
+    { id: 'idioten', svg: '<path d="M24 8 12 40M24 8l12 32M16.5 29h15" fill="none" stroke="#f5d58a" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>', name: t('idioten'), url: 'idioten.html', statsKey: 'idioten.stats', gameKey: 'idioten.game', settingsKey: 'idioten.settings', bestAny: true,
+      ...lv(() => 'classic', () => t('classic'), [[]]),
+      prog: st => st.gone.length, progText: n => t('idProgress', n),
+      idle: () => t('classic') },
   ];
   GAMES.forEach(g => {
     g.sub = (st, s) => st ? g.progText(g.prog(st)) : g.idle(s);
     g.topKey = g.id + '.top';
   });
   window.GAMES = GAMES;
-  window.SOON = SOON;
 })();

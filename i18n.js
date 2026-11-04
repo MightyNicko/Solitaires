@@ -31,7 +31,7 @@
       confirmTap: 'Tap again to confirm',
       // Spelsidan
       playSub: 'Choose a game', soon: 'Coming soon', allGames: '‹ All games',
-      spider: 'Spider', pyramid: 'Pyramid', klondike: 'Klondike', fortyThieves: 'Forty Thieves', scorpion: 'Scorpion',
+      spider: 'Spider', pyramid: 'Pyramid', klondike: 'Klondike', fortyThieves: 'Forty Thieves',
       // Spider
       score: 'Score', moves: 'Moves', time: 'Time',
       menu: 'Menu', undo: 'Undo', deal: n => `Deal · ${n}`, hint: 'Hint', new: 'New',
@@ -59,6 +59,9 @@
       golfRules: 'Move the top card of a column to the discard pile if it is one higher or one lower, regardless of suit. Draw a card when nothing fits. Clear all seven columns to win.',
       golfClassicRules: 'Nothing can be played on a king.', golfWrapRules: 'Ace and king connect: an ace goes on a king and a king on an ace.',
       golfProgress: n => `${n} of 35 played`, golfChangeSub: 'Choose variant', toastNoFitDraw: 'Nothing fits – draw a card',
+      idioten: 'Aces Up', discarded: 'Discarded', idEmpty: 'Empty', idWin: 'Only the four aces are left!', idLost: 'The draw pile is empty and no more cards can be discarded.',
+      idRules: 'Discard a top card if another top card has the same suit and a higher value. Aces are highest. Move a top card to an empty pile if you want to. Deal four new cards when you choose, one on each pile. You win when only the four aces are left.',
+      idProgress: n => `${n} of 48 discarded`, idChangeSub: 'Menu and rules', tallyTitle: 'Card tracker', tallyNew: 'Not seen', tallyTable: 'On the table', tallyGone: 'Grey: discarded',
       // Harpan (Klondike)
       klonRules: 'Build the columns down in alternating colours; only a king may go in an empty column. Build the four foundations up by suit from ace to king. Tap a card to move it where it fits best.',
       klonWin: 'All cards are on the foundations!', klonLost: 'No move helps any more and the draw pile can no longer help.', spiderLost: 'No move helps any more and the draw pile is empty.',
@@ -100,7 +103,7 @@
       resetGames: 'Radera sparade spel', resetGamesDone: 'Sparade spel är raderade',
       confirmTap: 'Tryck igen för att bekräfta',
       playSub: 'Välj patiens', soon: 'Kommer snart', allGames: '‹ Alla spel',
-      spider: 'Spindelharpan', pyramid: 'Pyramiden', klondike: 'Harpan', fortyThieves: 'Fyrtio rövare', scorpion: 'Skorpionen',
+      spider: 'Spindelharpan', pyramid: 'Pyramiden', klondike: 'Harpan', fortyThieves: 'Fyrtio rövare',
       score: 'Poäng', moves: 'Drag', time: 'Tid',
       menu: 'Meny', undo: 'Ångra', deal: n => `Ge · ${n}`, hint: 'Tips', new: 'Ny',
       difficulty: 'Svårighetsgrad', tapMove: 'Tryck på kort för att flytta',
@@ -125,6 +128,9 @@
       golfRules: 'Lägg det översta kortet i en kolumn på kasthögen om det är ett steg högre eller lägre, oavsett färg. Dra ett kort när inget passar. Töm alla sju kolumner för att vinna.',
       golfClassicRules: 'Inget får läggas på en kung.', golfWrapRules: 'Ess och kung hänger ihop: ess går på kung och kung på ess.',
       golfProgress: n => `${n} av 35 lagda`, golfChangeSub: 'Välj variant', toastNoFitDraw: 'Inget passar – dra ett kort',
+      idioten: 'Idioten', discarded: 'Kastade', idEmpty: 'Tom plats', idWin: 'Bara de fyra essen är kvar!', idLost: 'Draghögen är tom och inga fler kort kan kastas.',
+      idRules: 'Kasta ett översta kort om ett annat översta kort har samma färg och högre valör. Ess är högst. Flytta gärna ett översta kort till en tom plats. Dela ut fyra nya kort när du vill, ett på varje hög. Du vinner när bara de fyra essen är kvar.',
+      idProgress: n => `${n} av 48 kastade`, idChangeSub: 'Meny och regler', tallyTitle: 'Kortkoll', tallyNew: 'Inte kommit', tallyTable: 'På bordet', tallyGone: 'Grå: kastat',
       klonRules: 'Bygg nedåt i kolumnerna med omväxlande röd och svart. Bara en kung får läggas i en tom kolumn. Bygg de fyra grundhögarna uppåt i samma färg från ess till kung. Tryck på ett kort så flyttas det dit det passar bäst.',
       klonWin: 'Alla kort ligger på grundhögarna!', klonLost: 'Inget drag hjälper längre och draghögen kan inte hjälpa mer.', spiderLost: 'Inget drag hjälper längre och draghögen är tom.',
       klonProgress: n => `${n} av 52 klara`, klonChangeSub: 'Välj antal kort och varv',
