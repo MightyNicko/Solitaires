@@ -2,7 +2,7 @@
 // därifrån, utan att vänta på nätet. Sidor och filer kommer alltid från samma version, så de passar ihop.
 // En ny version hämtas när webbläsaren ser att sw.js har ändrats: den installeras i bakgrunden och tar över,
 // och används från nästa sidbyte. Byt därför CACHE varje gång någon fil ändras, och lägg till nya filer i FILES.
-const CACHE = 'solitaires-v36';
+const CACHE = 'solitaires-v37';
 const FILES = ['./', './index.html', './games.html', './games.js', './spider.html', './pyramid.html', './golf.html', './klondike.html', './freecell.html', './tripeaks.html', './yukon.html', './forty.html', './idioten.html', './rules.html', './rules.js', './page.css', './cards.css', './cards.js', './game.css', './game.js', './base.css', './base.js', './i18n.js', './sounds.js', './sounds/card-place-1.wav', './sounds/card-place-2.wav', './sounds/card-place-3.wav', './sounds/card-place-4.wav', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {

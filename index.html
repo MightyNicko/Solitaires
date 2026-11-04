@@ -211,7 +211,7 @@
     .pod { gap:6px; } .pod .md { width:44px; height:50px; } .pod .p1 .md { width:56px; height:64px; }
     .pod .sc { font-size:22px; } .pod .p1 .sc { font-size:26px; } .pod .ds { font-size:11px; }
     #top table { font-size:13px; } #top td { height:30px; } #top td.rk { font-size:15px; } .pod .ds { height:16px; line-height:16px; }
-    #top td:nth-child(1) { width:10%; } #top td:nth-child(2) { width:15%; } #top td:nth-child(3) { width:39%; } #top td:nth-child(4) { width:16%; } #top td:nth-child(6) { width:20%; }
+    #top td:nth-child(1) { width:8%; } #top td:nth-child(2) { width:12%; } #top td:nth-child(3) { width:34%; } #top td:nth-child(4) { width:17%; } #top td:nth-child(6) { width:29%; }
   }
 
 </style>
@@ -235,7 +235,7 @@
     <button class="deco line" id="open-settings"><span data-i18n="settings">Settings</span><small data-i18n="settingsSub">Appearance &amp; data</small></button>
   </div>
 </main>
-<div class="version">v1.5.1104.2004</div>
+<div class="version">v1.5.1104.2007</div>
 </div>
 
 <div class="overlay" id="stats"><div class="panel wide">
@@ -366,7 +366,7 @@
   function showTop(id, key) {
     const g = GAMES.find(x => x.id === id), lvl = g.levels.find(l => String(l.key) === key);
     const list = (store.get(g.topKey) || {})[key] || [];
-    const date = ms => new Date(ms).toLocaleDateString(I18N.lang, { day: 'numeric', month: 'short' });
+    const date = ms => new Date(ms).toLocaleDateString('sv-SE');   // alltid ÅÅÅÅ-MM-DD, oavsett språk
     const res = r => r.won ? `<span class="ok">✓</span> ${t('topWon')}` : g.progText(r.prog);
     // Klassisk pokal med två handtag, fot och sockel med plakett. Färgerna: glans, huvudfärg, skugga och kant.
     const cup = k => {
