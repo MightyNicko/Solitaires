@@ -88,7 +88,7 @@
 
   // ---------- Regler ----------
   // Fyra högar med ett kort var delas ut. Ett översta kort får kastas om ett annat översta kort har samma färg och högre valör (ess högst).
-  // Det översta kortet i en hög får flyttas till en tom plats. Fyra nya kort kan delas ut när som helst, ett på varje hög, även de tomma.
+  // Det översta kortet i en hög får flyttas till en tom hög. Fyra nya kort kan delas ut när som helst, ett på varje hög, även de tomma.
   // Spelet vinns när bara de fyra essen är kvar, alltså när 48 kort är kastade.
   const N = 48;
   const value = id => st.deck[id].r === 1 ? 14 : st.deck[id].r;
@@ -99,7 +99,7 @@
   const canDiscard = id => discards(st.cols).includes(id);
   const canMove = c => st.cols[c].length > 1 && st.cols.some(col => !col.length);
 
-  // Söker igenom lägena som går att nå genom att flytta kort till tomma platser, tills något kort kan kastas.
+  // Söker igenom lägena som går att nå genom att flytta kort till tomma högar, tills något kort kan kastas.
   // Ger den första flytten dit ({ id, to }, eller {} om ett kort kan kastas direkt), eller null om inget kort går att kasta hur man än flyttar.
   // Kort kan flyttas fram och tillbaka hur länge som helst, så vanliga lägen räknas bara en gång. Finns väldigt många lägen räknas det som att det går.
   function search() {
@@ -156,7 +156,7 @@
       showLost();
     }, 700);
   }
-  // Inga drag kvar: draghögen är tom och inget kort går att kasta, inte ens efter flyttar till tomma platser
+  // Inga drag kvar: draghögen är tom och inget kort går att kasta, inte ens efter flyttar till tomma högar
   const stuck = () => !st.won && !st.stock.length && !search();
   function discard(id) {
     pushHist();
@@ -339,8 +339,8 @@
   }
 
   // ---------- Touch / mus ----------
-  // Tryck på ett kort för att kasta det. Går det inte flyttas det till den första tomma platsen.
-  // Korten kan också dras till kasthögen eller till en viss tom plats. Tryck på draghögen för att dela ut.
+  // Tryck på ett kort för att kasta det. Går det inte flyttas det till den första tomma högen.
+  // Korten kan också dras till kasthögen eller till en viss tom hög. Tryck på draghögen för att dela ut.
   const clearTarget = () => board.querySelectorAll('.target').forEach(e => e.classList.remove('target'));
   const under = e => document.elementsFromPoint(e.clientX, e.clientY);
   const overWaste = e => under(e).some(n => n.id === 'waste-slot' || (n.closest && n.closest('.card') && st.gone.includes(+n.closest('.card').dataset.id)));

@@ -15,8 +15,8 @@ const RULES = (() => {
   const stock = (x, y) => [down(x, y), cap(x + 30, y + 90, I18N.t('stock'))];
   const waste = (x, y, card) => [card ? c(card[0], card[1], x, y) : slot(x, y), cap(x + 30, y + 90, I18N.t('waste'))];
   const found = () => L('Grund-\nhög', 'Foun-\ndation');
-  const empty = () => L('Tom\nplats', 'Empty');
-  const gone = () => L('Borta', 'Gone');
+  const empty = () => L('Tom\nkolumn', 'Empty\ncolumn');
+  const emptyPile = () => L('Tom\nhög', 'Empty\npile');
   // Korten flyttas med (dx, dy), lyser under rörelsen och får en pil från det första kortet till målet
   function go(cards, dx, dy) {
     const list = [].concat(cards), f = list[0], len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len;
@@ -24,6 +24,8 @@ const RULES = (() => {
     return [...list.map(k => ({ ...k, mv: [dx, dy], hi: 1 })),
       { t: 'a', x1: cx + ux * m, y1: cy + uy * m, x2: cx + dx - ux * m, y2: cy + dy - uy * m }];
   }
+  // Korten tas bort: de lyser och tonas bort, som i spelet
+  const leave = cards => cards.map(k => ({ ...k, out: 1, hi: 1 }));
   // Ett kort från draghögen hamnar på varje kolumn. list: [färg, valör, kolumnens x, y på kolumnen]
   const dealTo = (x0, list) => [...stock(x0, 0), ...list.flatMap(([s, r, x, y]) => ({ ...c(s, r, x0, 0), mv: [x - x0, y], hi: 1 })),
     { t: 'a', x1: x0 + 66, y1: 42, x2: list[0][2] - 6, y2: 42 }];
@@ -50,7 +52,7 @@ const RULES = (() => {
           d: [c(H, 7, 0, 0), ...go([c(S, 6, 150, 0), c(S, 5, 150, FAN)], -150, FAN)] },
         { title: L('Tom kolumn och dolda kort', 'Empty columns and hidden cards'), text: L('Vilket kort som helst får läggas i en tom kolumn. Ett nedvänt kort vänds upp när det hamnar överst.', 'Any card may go in an empty column. A face-down card turns over when it comes to the top.'),
           d: [slot(150, 0, empty()), down(0, 0), ...go(c(D, 9, 0, FAN), 150, -FAN)] },
-        { title: L('Dela ut', 'Deal'), text: L('Tryck på draghögen för att lägga ett nytt kort på varje kolumn. Alla kolumner måste då ha minst ett kort.', 'Tap the draw pile to put a new card on every column. Every column must then hold at least one card.'),
+        { title: L('Ge', 'Deal'), text: L('Tryck på draghögen för att lägga ett nytt kort på varje kolumn. Alla kolumner måste då ha minst ett kort.', 'Tap the draw pile to put a new card on every column. Every column must then hold at least one card.'),
           d: [c(S, 9, 100, 0), c(D, 3, 172, 0), c(C, J, 244, 0), ...dealTo(0, [[H, 5, 100, FAN], [S, Q, 172, FAN], [D, 7, 244, FAN]])] },
       ],
       end: L('Du vinner när alla åtta serier är borta. Spelet tar slut när draghögen är tom och inget drag hjälper längre. Du börjar med 500 poäng. Varje drag kostar 1 poäng och en färdig serie ger 100.',
@@ -67,10 +69,10 @@ const RULES = (() => {
                d: [...tri(3, (x, y, i, k) => c([S, H, D, C][(i + k) % 4], [10, 3, 9, 6, 12, 2][(i * 2 + k) % 6], x + 96, y)), ...stock(0, 0)] },
       steps: [
         { title: L('Par som blir 13', 'Pairs that make 13'), text: L('Två fria kort som blir 13 tillsammans tas bort. Ess är 1, knekt 11 och dam 12.', 'Two free cards that add up to 13 are removed. Ace is 1, jack 11 and queen 12.'),
-          d: [slot(230, 0, gone()), ...go(c(H, 6, 0, 0), 230, 0), ...go(c(S, 7, 80, 0), 150, 0)] },
+          d: leave([c(H, 6, 0, 0), c(S, 7, 80, 0)]) },
         { title: L('Kungar tas bort ensamma', 'Kings go alone'), text: L('En fri kung är 13 redan själv. Tryck på den så försvinner den.', 'A free king already counts as 13. Tap it and it is gone.'),
-          d: [slot(170, 0, gone()), ...go(c(D, K, 0, 0), 170, 0)] },
-        { title: L('Fria kort', 'Free cards'), text: L('Ett kort är fritt när inget ligger på det. Du får också para ett kort med det enda kort som ligger på det.', 'A card is free when nothing covers it. You may also pair a card with the only card covering it.'),
+          d: leave([c(D, K, 0, 0)]) },
+        { title: L('Fria kort', 'Free cards'), text: L('Ett kort är fritt när inget ligger på det. Båda korten i ett par måste vara fria.', 'A card is free when nothing covers it. Both cards in a pair must be free.'),
           d: [c(C, 4, 36, 0), { ...c(H, 9, 0, 46), hi: 1 }, { ...c(S, 2, 72, 46), hi: 1 }] },
         { title: L('Dra från draghögen', 'Draw from the pile'), text: L('Tryck på draghögen så hamnar ett kort överst på kasthögen. Det kortet kan också paras. Har du varv kvar vänds kasthögen när draghögen är tom.', 'Tap the draw pile and a card lands on top of the discard pile. That card can also be paired. If you have passes left, the discard pile turns over when the draw pile is empty.'),
           d: [...stock(0, 0), ...waste(170, 0), ...go(c(C, 8, 0, 0), 170, 0)] },
@@ -139,14 +141,14 @@ const RULES = (() => {
 
     tripeaks: () => ({
       goal: { text: L('Töm alla tre topparna genom att lägga korten på kasthögen.', 'Clear all three peaks by moving the cards to the discard pile.'),
-              d: [...[0, 150, 300].flatMap(x => [slot(x, 0), cap(x + 30, 90, gone())])] },
+              d: [0, 150, 300].map(x => slot(x, 0)) },
       setup: { text: L('28 kort ligger som tre toppar, där bara bottenraden är uppvänd. Resten är draghögen, och ett kort från den startar kasthögen.', 'Twenty-eight cards form three peaks, and only the bottom row is face up. The rest is the draw pile, and one of its cards starts the discard pile.'),
                d: [...tri(2, (x, y, i) => i ? c([S, H][x % 2 ? 1 : 0], x ? 9 : 4, x, y) : down(x, y)), ...tri(2, (x, y, i) => i ? c(x ? D : C, x ? 2 : J, x + 150, y) : down(x + 150, y)), ...stock(40, 150), ...waste(160, 150, [D, 6])] },
       steps: [
         { title: L('Lägg på kasthögen', 'Play to the discard pile'), text: L('Ett fritt kort får läggas om det är ett steg högre eller lägre, oavsett färg.', 'A free card may be played if it is one rank higher or lower, whatever the suit.'),
           d: [...waste(170, 0, [D, 6]), ...go(c(S, 7, 0, 0), 170, 0)] },
         { title: L('Korten vänds upp', 'Cards turn over'), text: L('Ett kort vänds upp och blir fritt när inget längre ligger på det.', 'A card turns over and becomes free when nothing covers it any more.'),
-          d: [down(36, 0), { ...c(H, 9, 0, 46), hi: 1 }, slot(72, 46, gone())] },
+          d: [down(36, 0), { ...c(H, 9, 0, 46), hi: 1 }, slot(72, 46)] },
         { title: L('Dra ett kort', 'Draw a card'), text: L('Passar inget kort trycker du på draghögen. Det nya kortet hamnar överst på kasthögen och serien bryts.', 'If nothing fits, tap the draw pile. The new card lands on top of the discard pile and the streak is broken.'),
           d: [...stock(0, 0), ...waste(170, 0), ...go(c(C, 4, 0, 0), 170, 0)] },
         { title: L('Ess och kung', 'Ace and king'), text: L('I Klassisk hänger ess och kung inte ihop. I Runt hörnet går ess på kung och kung på ess.', 'In Classic ace and king do not connect. In Round the corner an ace goes on a king and a king on an ace.'),
@@ -202,13 +204,13 @@ const RULES = (() => {
       steps: [
         { title: L('Kasta ett kort', 'Discard a card'), text: L('Har två översta kort samma färg? Tryck på det lägre, så kastas det. Ess är högst.', 'Do two top cards have the same suit? Tap the lower one and it is discarded. Aces are highest.'),
           d: [c(C, K, 72, 0), c(H, A, 144, 0), ...waste(250, 0), ...go(c(C, 7, 0, 0), 250, 0)] },
-        { title: L('Flytta till tom plats', 'Move to an empty pile'), text: L('Ett översta kort får flyttas till en tom plats. Då kommer kortet under fram.', 'A top card may move to an empty pile. The card below then comes to the top.'),
-          d: [slot(170, 0, empty()), c(S, 9, 0, 0), ...go(c(H, 5, 0, FAN), 170, -FAN)] },
-        { title: L('Dela ut', 'Deal'), text: L('Tryck på draghögen när du vill. Ett nytt kort hamnar på varje hög, även de tomma.', 'Tap the draw pile whenever you like. A new card lands on every pile, even the empty ones.'),
+        { title: L('Flytta till tom hög', 'Move to an empty pile'), text: L('Ett översta kort får flyttas till en tom hög. Då kommer kortet under fram.', 'A top card may move to an empty pile. The card below then comes to the top.'),
+          d: [slot(170, 0, emptyPile()), c(S, 9, 0, 0), ...go(c(H, 5, 0, FAN), 170, -FAN)] },
+        { title: L('Ge', 'Deal'), text: L('Tryck på draghögen när du vill. Ett nytt kort hamnar på varje hög, även de tomma.', 'Tap the draw pile whenever you like. A new card lands on every pile, even the empty ones.'),
           d: [c(S, 9, 100, 0), c(D, 6, 172, 0), slot(244, 0), ...dealTo(0, [[H, 8, 100, FAN], [S, 3, 172, FAN], [D, Q, 244, 0]])] },
       ],
-      end: L('Spelet tar slut när draghögen är tom och inget kort går att kasta, inte heller efter flyttar till tomma platser. Är bara essen kvar har du vunnit. Poängen är antalet kastade kort, och även förlorade spel kommer på topplistan.', 'The game ends when the draw pile is empty and no card can be discarded, even after moves to empty piles. If only the aces are left, you have won. The score is the number of discarded cards, and lost games also reach the top list.'),
-      tips: L('Spara tomma platser till höga kort. Flytta gärna ett ess eller en kung, sällan en tvåa. Kortkoll visar vilka kort som återstår.', 'Save empty piles for high cards. Move an ace or a king rather than a two. The card tracker shows which cards remain.'),
+      end: L('Spelet tar slut när draghögen är tom och inget kort går att kasta, inte heller efter flyttar till tomma högar. Är bara essen kvar har du vunnit. Poängen är antalet kastade kort, och även förlorade spel kommer på topplistan.', 'The game ends when the draw pile is empty and no card can be discarded, even after moves to empty piles. If only the aces are left, you have won. The score is the number of discarded cards, and lost games also reach the top list.'),
+      tips: L('Spara tomma högar till höga kort. Flytta gärna ett ess eller en kung, sällan en tvåa. Kortkoll visar vilka kort som återstår.', 'Save empty piles for high cards. Move an ace or a king rather than a two. The card tracker shows which cards remain.'),
     }),
   };
 })();

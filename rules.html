@@ -54,12 +54,14 @@
   .dia .card { box-shadow:0 2px 6px rgba(0,0,0,.5); }
   .dia .card.hi { box-shadow:0 0 0 3px var(--gold), 0 0 18px rgba(245,213,138,.8); }
   .dia .card.mv { z-index:450; animation:glide var(--glide,2.6s) ease-in-out infinite; }
+  .dia .card.out { animation:fade var(--glide,2.6s) ease-in-out infinite; }
+  @keyframes fade { 0%,25% { opacity:1; transform:none; } 60%,85% { opacity:0; transform:scale(.6); } 100% { opacity:1; transform:none; } }
   @keyframes glide { 0%,20% { transform:none; } 60%,85% { transform:translate(var(--dx),var(--dy)); } 100% { transform:none; } }
   .dia .sl { display:grid; place-items:center; border:2px dashed rgba(245,213,138,.6); background:rgba(245,213,138,.05); color:var(--gold); text-align:center; font-size:calc(var(--cw) * .17); line-height:1.15; }
   .dia .cap { position:absolute; transform:translateX(-50%); white-space:nowrap; font-size:max(calc(var(--cw) * .13),10px); letter-spacing:.08em; text-transform:uppercase; color:rgba(233,223,196,.7); }
   .dia .no { position:absolute; width:calc(var(--cw) * .36); height:calc(var(--cw) * .36); transform:translate(-50%,-50%); display:grid; place-items:center; border-radius:50%; background:#c8102e; color:#fff; font-weight:800; font-size:calc(var(--cw) * .24); box-shadow:0 0 0 2px #fff; z-index:510; }
   .dia svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; pointer-events:none; z-index:500; }
-  @media (prefers-reduced-motion:reduce) { .dia .card.mv { animation:none; } }
+  @media (prefers-reduced-motion:reduce) { .dia .card.mv, .dia .card.out { animation:none; } }
   /* Smal skärm: bara symbolerna i listan, och mindre luft i fönstret */
   @media (max-width:600px) {
     #list button { justify-content:center; padding:0; } #list span { display:none; }
@@ -121,7 +123,7 @@
     items.forEach(i => {
       const pos = `left:${px(i.x)}px;top:${px(i.y)}px`;
       const moving = i.mv && SPEED;
-      if (i.t === 'c') html += `<div class="card up${i.hi ? ' hi' : ''}${moving ? ' mv' : ''}" style="${pos};z-index:${moving ? 450 : 100 + Math.round(i.y)}${moving ? `;--dx:${px(i.mv[0])}px;--dy:${px(i.mv[1])}px` : ''}">${CardFaces.html(i, FACE)}</div>`;
+      if (i.t === 'c') html += `<div class="card up${i.hi ? ' hi' : ''}${moving ? ' mv' : ''}${i.out && SPEED ? ' out' : ''}" style="${pos};z-index:${moving ? 450 : 100 + Math.round(i.y)}${moving ? `;--dx:${px(i.mv[0])}px;--dy:${px(i.mv[1])}px` : ''}">${CardFaces.html(i, FACE)}</div>`;
       if (i.t === 'b') html += `<div class="card" style="${pos};z-index:${50 + Math.round(i.y)}"></div>`;
       if (i.t === 'e') html += `<div class="sl" style="${pos}">${i.txt.replace('\n', '<br>')}</div>`;
       if (i.t === 'l') html += `<div class="cap" style="${pos}">${i.txt}</div>`;

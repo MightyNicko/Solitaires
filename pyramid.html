@@ -77,20 +77,19 @@
   const ROW = [...Array(28)].map((_, i) => { const r = Math.floor((Math.sqrt(8 * i + 1) - 1) / 2); return [r, i - idx(r, 0)]; });
   const rank = id => st.deck[id].r;
   const top = () => st.waste.length ? st.waste[st.waste.length - 1] : -1;
-  // Kan kortet tas? Översta kortet i kasthögen går alltid. Ett pyramidkort går om det ligger med framsidan upp och
-  // inget ligger på det, eller om det enda som ligger på det är partnern (då försvinner båda samtidigt).
+  // Kan kortet tas? Översta kortet i kasthögen går alltid. Ett pyramidkort går om det ligger med framsidan upp och inget ligger på det.
   const down = i => !!(st.down && st.down[i]);
   const covers = i => { const [r, k] = ROW[i]; return r === 6 ? [] : [st.pyr[idx(r + 1, k)], st.pyr[idx(r + 1, k + 1)]]; };
-  function takeable(id, partner = -1) {
+  function takeable(id) {
     if (id === top()) return true;
     const i = st.pyr.indexOf(id);
-    return i >= 0 && !down(i) && covers(i).every(c => c === null || c === partner);
+    return i >= 0 && !down(i) && covers(i).every(c => c === null);
   }
   // Dolda rader: ett kort med baksidan upp vänds när inget längre ligger på det
   function reveal() {
     if (st.down) st.pyr.forEach((id, i) => { if (id !== null && st.down[i] && covers(i).every(c => c === null)) st.down[i] = false; });
   }
-  const pairOk = (a, b) => a !== b && rank(a) + rank(b) === 13 && takeable(a, b) && takeable(b, a);
+  const pairOk = (a, b) => a !== b && rank(a) + rank(b) === 13 && takeable(a) && takeable(b);
   const cleared = () => st.pyr.filter(x => x === null).length;
   const canTurn = () => !st.stock.length && st.waste.length > 0 && (st.passes === 0 || st.pass < st.passes);
   // Alla möjliga drag: kungar och par. Drag som tar bort pyramidkort kommer först.
@@ -305,7 +304,7 @@
     if (!el) { if (sel >= 0) { sel = -1; render(); } return; }
     const id = +el.dataset.id;
     if (st.gone.includes(id)) return;
-    if (!takeable(id) && !(sel >= 0 && pairOk(sel, id))) { shake([el]); return; }
+    if (!takeable(id)) { shake([el]); return; }
     drag = { id, el, pid: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, moving: false };
   });
   window.addEventListener('pointermove', e => {
