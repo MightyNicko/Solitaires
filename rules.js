@@ -212,5 +212,60 @@ const RULES = (() => {
       end: L('Spelet tar slut när draghögen är tom och inget kort går att kasta, inte heller efter flyttar till tomma högar. Är bara essen kvar har du vunnit. Poängen är antalet kastade kort, och även förlorade spel kommer på topplistan.', 'The game ends when the draw pile is empty and no card can be discarded, even after moves to empty piles. If only the aces are left, you have won. The score is the number of discarded cards, and lost games also reach the top list.'),
       tips: L('Spara tomma högar till höga kort. Flytta gärna ett ess eller en kung, sällan en tvåa.', 'Save empty piles for high cards. Move an ace or a king rather than a two.'),
     }),
+
+    canfield: () => ({
+      goal: { text: L('Få alla 52 kort till de fyra grundhögarna. Alla grundhögar börjar på samma valör, som är olika från spel till spel.', 'Get all 52 cards onto the four foundations. All foundations start on the same rank, which changes from game to game.'),
+              d: row([[S, 7], [H, 7], [D, 7], [C, 7]]) },
+      setup: { text: L('Reserven har 13 kort och bara det översta syns. Ett kort börjar på grundhögarna och ett ligger i var och en av de fyra kolumnerna. Resten är draghögen.', 'The reserve holds 13 cards and only the top one shows. One card starts on the foundations and one lies in each of the four columns. The rest is the draw pile.'),
+               d: [c(S, J, 0, 0), cap(30, 90, L('Reserv', 'Reserve')), ...row([[H, 3], [C, K], [D, 9], [S, 5]], 0, 100), ...stock(400, 0)] },
+      steps: [
+        { title: L('Grundhögarna', 'The foundations'), text: L('Bygg uppåt i samma färg. Efter kungen kommer esset, så högen går runt tills 13 kort ligger där.', 'Build up in the same suit. The ace follows the king, so the pile goes round until it holds 13 cards.'),
+          d: [slot(0, 0, found()), c(H, K, 0, 0), ...go(c(H, A, 170, 0), -170, 0)] },
+        { title: L('Kolumnerna', 'The columns'), text: L('Bygg nedåt i växelvis röd och svart. En kung får läggas på ett ess.', 'Build down in alternating red and black. A king may go on an ace.'),
+          d: [c(S, 8, 0, 0), ...go(c(D, 7, 150, 0), -150, FAN)] },
+        { title: L('Flytta en hel kolumn', 'Move a whole column'), text: L('Du får flytta det översta kortet eller hela kolumnen, men inte bara en del av den.', 'You may move the top card or the whole column, but not just part of it.'),
+          d: [c(H, 9, 0, 0), ...go([c(S, 8, 150, 0), c(D, 7, 150, FAN)], -150, FAN)] },
+        { title: L('Tom kolumn', 'Empty column'), text: L('En tom kolumn fylls direkt från reserven. När reserven är slut får du lägga kasthögens översta kort där.', 'An empty column is filled at once from the reserve. When the reserve is gone you may put the top card of the discard pile there.'),
+          d: [slot(170, 0, empty()), ...go(c(S, J, 0, 0), 170, 0), cap(30, 90, L('Reserv', 'Reserve'))] },
+        { title: L('Dra kort', 'Draw cards'), text: L('Tryck på draghögen för att lägga tre kort, eller ett, på kasthögen. Bara det översta kan spelas. Du får gå igenom draghögen hur många gånger du vill.', 'Tap the draw pile to put three cards, or one, on the discard pile. Only the top one can be played. You may go through the draw pile as often as you like.'),
+          d: [...stock(0, 0), ...waste(170, 0), ...go(c(D, 4, 0, 0), 170, 0)] },
+      ],
+      end: L('Du vinner när alla kort ligger på grundhögarna. Spelet tar slut när inget drag hjälper längre, inte heller efter ett varv genom draghögen. Varje kort på en grundhög ger 10 poäng, och även förlorade spel kommer på topplistan.', 'You win when all cards are on the foundations. The game ends when no move helps any more, even after going through the draw pile. Each card on a foundation gives 10 points, and lost games also reach the top list.'),
+      tips: L('Töm reserven så fort du kan, för den låser annars kolumnerna. Spela inte upp kort på grundhögarna om de behövs i kolumnerna, eftersom de inte kan tas tillbaka.', 'Empty the reserve as fast as you can, since it otherwise locks the columns. Do not move cards to the foundations if the columns need them, since they cannot be taken back.'),
+    }),
+
+    calculation: () => ({
+      goal: { text: L('Bygg alla fyra grundhögarna upp till kung. Färgerna spelar ingen roll, bara valörerna.', 'Build all four foundations up to the king. Suits do not matter, only ranks.'),
+              d: kings() },
+      setup: { text: L('Grundhögarna börjar på A, 2, 3 och 4. Under dem finns fyra tomma kasthögar. Det översta kortet i draghögen är alltid uppvänt och väntar på att läggas.', 'The foundations start on A, 2, 3 and 4. Below them are four empty discard piles. The top card of the draw pile is always face up and waiting to be placed.'),
+               d: row([[S, A], [H, 2], [D, 3], [C, 4]]).concat([0, 72, 144, 216].map(x => slot(x, 100))) },
+      steps: [
+        { title: L('Räkna i olika steg', 'Count in different steps'), text: L('Högarna räknas med 1, 2, 3 och 4 steg. Högen med steg 2 går 2, 4, 6, 8, 10, Q, A, 3 och så vidare. Märket Nästa visar vilken valör som passar.', 'The piles count in steps of 1, 2, 3 and 4. The pile with step 2 goes 2, 4, 6, 8, 10, Q, A, 3 and so on. The Next label shows which rank fits.'),
+          d: [c(H, 8, 0, 0), ...go(c(S, 10, 170, 0), -170, 0)] },
+        { title: L('Lägg på en kasthög', 'Use a discard pile'), text: L('Passar kortet inte, eller vill du spara det? Tryck på en kasthög eller dra kortet dit. Vilket kort som helst får läggas på vilken kasthög som helst.', 'Does the card not fit, or do you want to save it? Tap a discard pile or drag the card there. Any card may go on any discard pile.'),
+          d: [c(C, K, 170, 0), ...go(c(D, 6, 0, 0), 170, FAN)] },
+        { title: L('Från kasthög till grundhög', 'From discard pile to foundation'), text: L('Översta kortet på en kasthög får bara flyttas till en grundhög, och aldrig till en annan kasthög.', 'The top card of a discard pile may only go to a foundation, never to another discard pile.'),
+          d: [c(D, 5, 0, 0), ...go(c(S, 6, 170, 0), -170, 0)] },
+      ],
+      end: L('Du vinner när alla fyra högarna har nått kungen. Spelet tar slut när draghögen är tom och inget översta kort passar. Poängen är antalet kort på grundhögarna, och även förlorade spel kommer på topplistan.', 'You win when all four piles have reached the king. The game ends when the draw pile is empty and no top card fits. The score is the number of cards on the foundations, and lost games also reach the top list.'),
+      tips: L('Lägg kort på varandra så att det som behövs först ligger överst. Ha gärna en kasthög för kungar, eftersom de behövs sist.', 'Stack cards so that what is needed first lies on top. Keep one discard pile for kings, since they are needed last.'),
+    }),
+
+    montecarlo: () => ({
+      goal: { text: L('Ta bort alla 52 kort, två och två.', 'Remove all 52 cards, two at a time.'),
+              d: leave([c(S, 9, 0, 0), c(D, 9, 72, 0)]) },
+      setup: { text: L('Ett rutnät med fem rader och fem kolumner. Resten av korten är draghögen.', 'A grid with five rows and five columns. The other cards are the draw pile.'),
+               d: [...stock(0, 0), ...row([[S, 9], [H, 4], [D, K]], 0, 100), ...row([[D, 4], [C, Q], [S, 7]], 100, 100)] },
+      steps: [
+        { title: L('Par med samma valör', 'Pairs of the same rank'), text: L('Två kort med samma valör som ligger intill varandra tas bort. Tryck på det ena och sedan på det andra, eller dra det ena till det andra.', 'Two cards of the same rank that lie next to each other are removed. Tap one and then the other, or drag one onto the other.'),
+          d: leave([c(H, 7, 0, 0), c(S, 7, 72, 0)]) },
+        { title: L('Även på diagonalen', 'Also diagonally'), text: L('Korten får ligga bredvid varandra, över varandra eller på diagonalen.', 'The cards may lie side by side, above each other or diagonally.'),
+          d: [c(C, 2, 72, 0), c(D, K, 0, 100), ...leave([c(H, 4, 0, 0), c(D, 4, 72, 100)])] },
+        { title: L('Samla ihop', 'Collect'), text: L('Tryck på Samla ihop. Då flyttas korten framåt så att luckorna försvinner, och nya kort från draghögen fyller på nedtill.', 'Tap Collect. The cards then move forward to close the gaps, and new cards from the draw pile fill up at the end.'),
+          d: [slot(0, 0), ...go(c(C, 8, 72, 0), -72, 0)] },
+      ],
+      end: L('Du vinner när alla kort är borta. Spelet tar slut när inga kort med samma valör ligger intill varandra och det inte går att samla ihop mer. Poängen är antalet par, och även förlorade spel kommer på topplistan.', 'You win when all cards are gone. The game ends when no cards of the same rank lie next to each other and nothing more can be collected. The score is the number of pairs, and lost games also reach the top list.'),
+      tips: L('Har du flera par att välja på, så tänk på hur korten flyttas när du samlar ihop. Ta paren längst ned först, så flyttas färre kort.', 'If you can choose between pairs, think about how the cards move when you collect. Take the pairs furthest down first, so that fewer cards move.'),
+    }),
   };
 })();

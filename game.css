@@ -47,6 +47,9 @@ body { color:var(--ink); font-family:-apple-system,"Segoe UI",system-ui,sans-ser
         transition:translate var(--dur,.3s) cubic-bezier(.2,.8,.2,1), transform var(--dur,.3s) cubic-bezier(.2,.8,.2,1), opacity var(--dur,.3s);
         box-shadow:0 3px 9px rgba(0,0,0,.45); }   /* fram- och baksidor: se cards.css */
 .card.stock { opacity:0; pointer-events:none; }
+/* Spel där korten byter storlek när de flyttas (draghög, kasthög eller reserv är mindre eller större än resten) */
+#board.sized .card { transition:translate var(--dur,.3s) cubic-bezier(.2,.8,.2,1), transform var(--dur,.3s) cubic-bezier(.2,.8,.2,1), opacity var(--dur,.3s), width var(--dur,.3s), height var(--dur,.3s); }
+.slot.free { display:grid; place-items:center; border:2px dashed rgba(245,213,138,.6); background:rgba(245,213,138,.05); color:var(--gold); font-size:max(calc(var(--cw) * .1),10px); letter-spacing:.06em; text-align:center; }
 .card.gone { opacity:0; transform:scale(.25); pointer-events:none; }
 .card.dragging { transition:none; box-shadow:0 12px 26px rgba(0,0,0,.55); }
 .card.hint, .slot.hint { box-shadow:0 0 0 3px var(--gold), 0 0 22px var(--gold); }

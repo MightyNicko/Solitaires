@@ -34,6 +34,7 @@ const Game = (() => {
   const MID = {
     draw: { id: 'b-draw', lbl: 'draw-lbl', text: 'Draw' },
     deal: { id: 'b-deal', lbl: 'deal-lbl', text: 'Deal · 5' },
+    collect: { id: 'b-collect', lbl: 'collect-lbl', text: 'Collect' },
   };
   function build(board, ui) {
     const mid = MID[ui.mid];
@@ -75,11 +76,66 @@ const Game = (() => {
     $('lobby').querySelector('.medal svg').innerHTML = INFO.svg;   // samma symbol som på sidan Spela
     board.classList.add('face-' + FACE, 'back-' + BACK);
     board.style.setProperty('--dur', (.3 * SPEED) + 's');
+    if (ui.sized) board.classList.add('sized');
     CardSounds.init(global.sound);
     if (!HINTS) $('b-hint').classList.add('off');
     if (!UNDO) $('b-undo').classList.add('off');
     // Gör ändringar utan animation (t.ex. när korten läggs på plats efter en vridning)
     const instant = fn => { board.classList.add('noanim'); fn(); void board.offsetWidth; board.classList.remove('noanim'); };
+    // Korten på bordet: skapar dem, lägger dem på plats med ljud och storlek, och hanterar tipsens och målens markeringar
+    const table = (() => {
+      let els = [], delays = {}, volume = 1, hintTimer = 0;
+      const put = (e, x, y) => { e.style.left = x + 'px'; e.style.top = y + 'px'; };
+      const size = (e, w) => { e.style.setProperty('--cw', w + 'px'); e.style.setProperty('--ch', w * 1.4 + 'px'); };
+      const clearHints = () => { clearTimeout(hintTimer); board.querySelectorAll('.hint').forEach(e => e.classList.remove('hint')); };
+      return {
+        put, size, clearHints,
+        el: id => els[id],
+        // En blandad lek: deck är korten och ids deras nummer i blandad ordning
+        shuffled() {
+          const deck = [];
+          for (let s = 0; s < 4; s++) for (let r = 1; r <= 13; r++) deck.push({ s, r });
+          const ids = deck.map((_, i) => i);
+          for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+          return { deck, ids };
+        },
+        build(deck) {
+          els.forEach(e => e.remove());
+          els = deck.map((c, id) => {
+            const e = document.createElement('div');
+            e.className = 'card'; e.dataset.id = id;
+            e.innerHTML = CardFaces.html(c, FACE);
+            board.appendChild(e);
+            return e;
+          });
+        },
+        anim(a = {}) { delays = a.delay || {}; volume = a.vol ?? 1; },
+        // Skriver bara det som har ändrats, så att webbläsaren inte behöver räkna om kort som ligger still
+        set(id, x, y, z, cls, w) {
+          const e = els[id];
+          // Ett kort som flyttas låter när det landar: efter sin fördröjning och ca 60 % av rörelsen
+          if (!board.classList.contains('noanim') && (Math.abs(e._x - x) > 8 || Math.abs(e._y - y) > 8))
+            CardSounds.place(((delays[id] || 0) + 180) * SPEED, volume);
+          const zs = String(z), dl = (delays[id] || 0) * SPEED + 'ms';
+          if (e._w !== w) { e._w = w; size(e, w); }
+          if (e._x !== x || e._y !== y) place(e, x, y);
+          if (e.style.zIndex !== zs) e.style.zIndex = zs;
+          if (e.className !== cls) e.className = cls;
+          if (e.style.transitionDelay !== dl) e.style.transitionDelay = dl;
+        },
+        // Ytan mellan banderollen och dockan. På en smal telefon ligger ringen under banderollen, och då börjar korten under ringen.
+        area() {
+          const W = board.clientWidth, H = board.clientHeight, br = board.getBoundingClientRect();
+          const hudB = document.querySelector('.hud').getBoundingClientRect().bottom - br.top + 16;
+          const T = W <= 640 ? Math.max(hudB, $('ring').getBoundingClientRect().bottom - br.top + 10) : hudB;
+          return { W, H, T, B: document.querySelector('.dock').getBoundingClientRect().top - br.top - 12 };
+        },
+        // Lyser upp korten och platserna en kort stund
+        showHint(list) { clearHints(); list.forEach(e => e.classList.add('hint')); hintTimer = setTimeout(clearHints, 1600); },
+        clearTargets() { board.querySelectorAll('.target').forEach(e => e.classList.remove('target')); },
+        pulse(id) { const b = $(id); b.classList.remove('pulse'); void b.offsetWidth; b.classList.add('pulse'); },
+      };
+    })();
     // Statistiken per nivå: { played, won, best, fast }, där best är bästa poäng och fast snabbaste vinst i sekunder
     const loadStats = () => {
       const all = store.get(INFO.statsKey) || {};
@@ -197,7 +253,7 @@ const Game = (() => {
       });
       return { open, close, showLobby, showLost, paused: () => paused };
     }
-    return { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO, record, recordWin, begin, stats, flow };
+    return { store, global, SPEED, UNDO, HINTS, FACE, BACK, fmt, btnText, place, instant, toast, shake, INFO, record, recordWin, begin, stats, flow, table };
   }
 
   // Tidtagning, sparande och omräkning av layouten. game() ger spelets tillstånd och paused() om en dialog är öppen.

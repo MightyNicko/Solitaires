@@ -52,6 +52,19 @@
       ...lv(() => 'classic', () => t('classic'), [[]]),
       prog: st => st.gone.length, progText: n => t('idProgress', n),
       idle: () => t('classic') },
+    // Även de här tre vinns inte alltid, så bästa poäng räknas också på spel som inte klaras
+    { id: 'canfield', svg: '<path fill="#f5d58a" d="M9 36 6 15l10 8 8-14 8 14 10-8-3 21z"/><rect x="9" y="38" width="30" height="3.4" rx="1.4" fill="#f5d58a"/>', name: t('canfield'), url: 'canfield.html', statsKey: 'canfield.stats', gameKey: 'canfield.game', settingsKey: 'canfield.settings', bestAny: true,
+      ...lv(d => String(d), d => t('drawCards', +d), [['3'], ['1']]),
+      prog: st => st.found.reduce((n, f) => n + f.length, 0), progText: n => t('klonProgress', n),
+      idle: s => t('drawCards', s.draw || 3) },
+    { id: 'calculation', svg: '<g fill="none" stroke="#f5d58a" stroke-width="3.6" stroke-linecap="round"><path d="M15 8v14M8 15h14M28 15h13M28 32h13M28 39h13"/><path d="M9.5 31.500 20.500 41.500M20.500 31.500 9.500 41.500"/></g>', name: t('calculation'), url: 'calculation.html', statsKey: 'calculation.stats', gameKey: 'calculation.game', settingsKey: 'calculation.settings', bestAny: true,
+      ...lv(() => 'classic', () => t('classic'), [[]]),
+      prog: st => st.found.reduce((n, f) => n + f.length, 0), progText: n => t('klonProgress', n),
+      idle: () => t('classic') },
+    { id: 'montecarlo', svg: '<circle cx="24" cy="24" r="17" fill="none" stroke="#f5d58a" stroke-width="3"/><circle cx="24" cy="24" r="7" fill="#f5d58a"/><g stroke="#f5d58a" stroke-width="3" stroke-linecap="round"><path d="M24 7v7M24 34v7M7 24h7M34 24h7M12 12l5 5M31 31l5 5M36 12l-5 5M17 31l-5 5"/></g>', name: t('montecarlo'), url: 'montecarlo.html', statsKey: 'montecarlo.stats', gameKey: 'montecarlo.game', settingsKey: 'montecarlo.settings', bestAny: true,
+      ...lv(() => 'classic', () => t('classic'), [[]]),
+      prog: st => st.gone.length, progText: n => t('mcProgress', n),
+      idle: () => t('classic') },
   ];
   GAMES.forEach(g => {
     g.sub = (st, s) => st ? g.progText(g.prog(st)) : g.idle(s);

@@ -14,11 +14,6 @@
 <link rel="stylesheet" href="cards.css">
 <link rel="stylesheet" href="base.css">
 <link rel="stylesheet" href="game.css">
-<style>
-  /* Draghögen och kasthögen är mindre än högarna, så korten ändrar storlek när de flyttas dit */
-  .card { transition:translate var(--dur,.3s) cubic-bezier(.2,.8,.2,1), transform var(--dur,.3s) cubic-bezier(.2,.8,.2,1), opacity var(--dur,.3s), width var(--dur,.3s), height var(--dur,.3s); }
-  .slot.free { display:grid; place-items:center; border:2px dashed rgba(245,213,138,.6); background:rgba(245,213,138,.05); color:var(--gold); font-size:max(calc(var(--cw) * .1),10px); letter-spacing:.06em; text-align:center; }
-</style>
 <script src="i18n.js"></script>
 <script src="cards.js"></script>
 <script src="sounds.js"></script>
@@ -62,7 +57,7 @@
   const board = $('board');
   // Gemensamt för alla spel (game.js): lagring, startsidans inställningar, kortens plats, meddelanden och skakning.
   // INFO är spelets uppgifter i games.js: nivåer, nivånamn och lobbyns symbol.
-  const { store, UNDO, HINTS, SPEED, FACE, fmt, place, instant, toast, shake, record, recordWin, begin, flow } = Game.init(board, 'idioten', { mid: 'deal', win: 'idWin', lost: 'idLost' });
+  const { store, UNDO, HINTS, SPEED, FACE, fmt, place, instant, toast, shake, record, recordWin, begin, flow } = Game.init(board, 'idioten', { mid: 'deal', win: 'idWin', lost: 'idLost', sized: true });
 
   let st = null, hist = [], els = [], M = null, drag = null;
   let hintIdx = 0, hintTimer = 0;

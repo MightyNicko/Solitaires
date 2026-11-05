@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Solitaires">
+<meta name="theme-color" content="#10152e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Canfield Solitaire</title>
+<link rel="stylesheet" href="cards.css">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="game.css">
+<style>
+  .slot.found { font-size:calc(var(--cw) * .3); }
+  #reserve-slot.live { box-shadow:0 0 0 2px var(--gold), 0 0 26px rgba(245,213,138,.45); }
+</style>
+<script src="i18n.js"></script>
+<script src="cards.js"></script>
+<script src="sounds.js"></script>
+<script src="games.js"></script>
+<script src="base.js"></script>
+<script src="game.js"></script>
+</head>
+<body>
+<div class="remove-blur" aria-hidden="true"></div>
+<div id="board">
+  <div class="ring" id="ring"><span id="cleared">0/52</span></div>
+  <div class="hud"><div class="l"><span><em data-i18n="score">Score</em><b id="score">0</b></span><span><em data-i18n="moves">Moves</em><b id="moves">0</b></span></div><div class="ttl"><span data-i18n="canfield">Canfield</span></div><div class="r"><span><em data-i18n="time">Time</em><b id="time">0:00</b></span><span><em data-i18n="reserve">Reserve</em><b id="left">13</b></span></div></div>
+  <div class="slot stock" id="stock-slot"></div>
+  <div class="slot" id="waste-slot"></div>
+  <div class="slot" id="reserve-slot"></div>
+  <div class="slot found" id="f0"></div><div class="slot found" id="f1"></div><div class="slot found" id="f2"></div><div class="slot found" id="f3"></div>
+  <div class="slot" id="t0"></div><div class="slot" id="t1"></div><div class="slot" id="t2"></div><div class="slot" id="t3"></div>
+  <div class="badge" id="stock-n"></div>
+  <div class="badge" id="reserve-n"></div>
+  <div class="plabel" id="stock-lbl" data-i18n="stock">Draw pile</div>
+  <div class="plabel" id="waste-lbl" data-i18n="waste">Discard pile</div>
+  <div class="plabel" id="reserve-lbl" data-i18n="reserve">Reserve</div>
+</div>
+
+<div class="overlay lobby" id="lobby"><div class="panel">
+  <div class="medal"><svg viewBox="0 0 48 48" aria-hidden="true"></svg></div>
+  <h2 data-i18n="canfield">Canfield</h2>
+  <div class="orn">◆ Solitaire ◆</div>
+  <p class="rules" data-i18n="cfRules"></p>
+  <div class="label" data-i18n="drawLabel">Cards per draw</div>
+  <div class="seg" data-key="draw"><button class="btn" data-v="3"></button><button class="btn" data-v="1"></button></div>
+  <div class="statgrid"><div><b id="st-played">0</b><span data-i18n="played">Played</span></div><div><b id="st-won">0</b><span data-i18n="won">Won</span></div><div><b id="st-best">–</b><span data-i18n="bestScore">Best score</span></div></div>
+  <button class="btn gold" id="l-resume"></button>
+  <button class="btn gold" id="l-play"></button>
+  <button class="btn link" id="l-home" data-i18n="allGames">‹ All games</button>
+</div></div>
+
+<script>
+(() => {
+  const t = I18N.t;
+  I18N.apply();
+  const $ = id => document.getElementById(id);
+  const board = $('board');
+  const { store, UNDO, HINTS, SPEED, fmt, place, instant, toast, shake, record, recordWin, begin, flow, table } = Game.init(board, 'canfield', { mid: 'draw', win: 'cfWin', lost: 'cfLost', sized: true });
+
+  let st = null, hist = [], M = null, drag = null, finishing = false, hintIdx = 0;
+  const save = () => st && store.set('canfield.game', { st, hist });
+  const SKEY = 'canfield.settings';
+  const settings = Object.assign({ draw: 3 }, store.get(SKEY) || {});
+
+  // ---------- Regler ----------
+  // Reserv med 13 kort, fyra kolumner och fyra grundhögar, en per färg (0 spader, 1 hjärter, 2 ruter, 3 klöver).
+  // Grundhögarna börjar på det första kortets valör (base) och går uppåt i samma färg, från kung runt till ess.
+  // Kolumnerna byggs nedåt i växelvis färg, och en kung får läggas på ett ess. Det översta kortet eller hela kolumnen får flyttas.
+  // En tom kolumn fylls direkt från reserven. När reserven är slut får kasthögens översta kort läggas där.
+  const rank = id => st.deck[id].r, suit = id => st.deck[id].s;
+  const red = id => suit(id) === 1 || suit(id) === 2;
+  const last = a => a[a.length - 1];
+  const homed = () => st.found.reduce((n, f) => n + f.length, 0);
+  const toFound = id => rank(id) === (st.base - 1 + st.found[suit(id)].length) % 13 + 1;
+  const fits = (id, on) => red(id) !== red(on) && rank(on) === rank(id) % 13 + 1;
+  // Får korten (w från where) läggas på kolumn c?
+  function canTab(w, c) {
+    if (w.from === 'tab' && w.c === c) return false;
+    const tp = last(st.tab[c]);
+    return tp === undefined ? w.from === 'waste' && !st.reserve.length : fits(w.ids[0], tp);
+  }
+  // Var ligger kortet, och vilka kort följer med? Det översta kortet i en kolumn flyttas ensamt, och ett kort längre ned tar med hela kolumnen.
+  function where(id) {
+    if (last(st.waste) === id) return { from: 'waste', ids: [id] };
+    if (last(st.reserve) === id) return { from: 'reserve', ids: [id] };
+    for (let c = 0; c < 4; c++) {
+      const col = st.tab[c], k = col.indexOf(id);
+      if (k >= 0) return k === col.length - 1 ? { from: 'tab', c, k, ids: [id] } : { from: 'tab', c, k: 0, ids: col.slice() };
+    }
+    return null;
+  }
+  // Drag som för spelet framåt, för tips och för att se om spelet har kört fast
+  function findMoves() {
+    const res = [], cols = [0, 1, 2, 3];
+    const single = (id, from, pri) => {
+      if (id === undefined) return;
+      const w = { from, ids: [id] };
+      if (toFound(id)) res.push({ ids: [id], to: 'found', pri: 3 });
+      cols.forEach(d => { if (canTab(w, d)) res.push({ ids: [id], to: d, pri }); });
+    };
+    single(last(st.reserve), 'reserve', 2);
+    single(last(st.waste), 'waste', 1);
+    const more = st.reserve.length || st.stock.length || st.waste.length;
+    cols.forEach(c => {
+      const col = st.tab[c], top = last(col);
+      if (top === undefined) return;
+      if (toFound(top)) res.push({ ids: [top], to: 'found', pri: 3 });
+      // Hela kolumnen: tömmer den, vilket bara hjälper om något kan läggas där
+      if (more) cols.forEach(d => { if (d !== c && st.tab[d].length && fits(col[0], last(st.tab[d]))) res.push({ ids: col.slice(), to: d, pri: 2 }); });
+      // Översta kortet: bara om kortet under det sedan kan spelas, annars kan man flytta fram och tillbaka i evighet
+      if (col.length > 1) {
+        const under = col[col.length - 2];
+        cols.forEach(d => {
+          if (d === c || !st.tab[d].length || !fits(top, last(st.tab[d]))) return;
+          if (toFound(under) || cols.some(e => e !== c && e !== d && st.tab[e].length && fits(under, last(st.tab[e])))) res.push({ ids: [top], to: d, pri: 0 });
+        });
+      }
+    });
+    return res.sort((a, b) => b.pri - a.pri);
+  }
+  // Korten som hamnar överst på kasthögen under ett helt varv genom draghögen
+  function cycleTops() {
+    let s = st.stock.slice(), w = st.waste.slice();
+    const out = [];
+    for (let pass = 0; pass < 2; pass++) {
+      while (s.length) { for (let i = 0; i < st.draw && s.length; i++) w.push(s.pop()); out.push(last(w)); }
+      s = w.reverse(); w = [];
+    }
+    return out;
+  }
+  const playable = id => toFound(id) || [0, 1, 2, 3].some(c => canTab({ from: 'waste', ids: [id] }, c));
+  const stuck = () => !st.won && !findMoves().length && !cycleTops().some(playable);
+
+  // ---------- Spelflöde ----------
+  const curLevel = () => String(st.draw), wantLevel = () => String(settings.draw);
+  const untouched = () => st && !st.won && !st.moves && curLevel() === wantLevel();
+  function newGame() {
+    if (st && !st.won && st.moves > 0) record(curLevel(), st, false);   // ett ej klarat spel hamnar också på topplistan
+    const { deck, ids } = table.shuffled();
+    const reserve = ids.splice(0, 13), first = ids.pop(), tab = [0, 1, 2, 3].map(() => [ids.pop()]), found = [[], [], [], []];
+    found[deck[first].s].push(first);
+    st = { deck, base: deck[first].r, reserve, tab, found, stock: ids, waste: [], score: 0, moves: 0, time: 0, draw: settings.draw, won: false, counted: false, id: Date.now() };
+    hist = []; finishing = false; hintIdx = 0; table.clearHints(); table.build(deck);
+    instant(() => deck.forEach((_, id) => { table.el(id).className = 'card'; table.set(id, M.sx, M.sy, 10, 'card', M.cw); }));
+    const delay = {};
+    let n = 0;
+    reserve.forEach(id => delay[id] = n++ * 12);
+    delay[first] = n++ * 12;
+    tab.forEach(col => delay[col[0]] = n++ * 30);
+    render({ delay }); save();
+  }
+  function snapshot() { return JSON.stringify({ reserve: st.reserve, tab: st.tab, found: st.found, stock: st.stock, waste: st.waste, score: st.score }); }
+  function pushHist() { if (!UNDO) return; hist.push(snapshot()); if (hist.length > UNDO) hist.shift(); }
+  // En tom kolumn fylls direkt från reserven
+  function fill() { st.tab.forEach(col => { if (!col.length && st.reserve.length) col.push(st.reserve.pop()); }); }
+  const canFinish = () => !st.won && !st.stock.length && !st.waste.length && !st.reserve.length && st.tab.some(col => col.length && toFound(last(col)));
+  function after(anim) {
+    begin(curLevel(), st);   // första draget: spelet räknas som spelat
+    hintIdx = 0; table.clearHints(); render(anim); save();
+    if (homed() === 52 && !st.won) win();
+    else if (canFinish()) autoFinish();
+    else if (stuck()) setTimeout(() => {
+      if (!st || st.won || !stuck()) return;
+      record(curLevel(), st, false);   // det förlorade spelet läggs på topplistan direkt
+      showLost();
+    }, 700);
+  }
+  function move(w, to) {
+    pushHist();
+    if (w.from === 'waste') st.waste.pop();
+    else if (w.from === 'reserve') st.reserve.pop();
+    else if (w.ids.length === st.tab[w.c].length) st.tab[w.c] = [];
+    else st.tab[w.c].pop();
+    if (to === 'found') { st.found[suit(w.ids[0])].push(w.ids[0]); st.score += 10; }
+    else st.tab[to].push(...w.ids);
+    fill();
+    st.moves++;
+    after({ vol: MOVE_VOL });
+  }
+  // Lägg kort på kasthögen, eller vänd kasthögen till en ny draghög. Antalet varv är obegränsat.
+  function draw() {
+    if (drag || !st || st.won || finishing) return;
+    if (st.stock.length) { pushHist(); for (let i = 0; i < st.draw && st.stock.length; i++) st.waste.push(st.stock.pop()); }
+    else if (st.waste.length) { pushHist(); st.stock = st.waste.reverse(); st.waste = []; }
+    else return;
+    st.moves++;
+    after({ vol: .6 });
+  }
+  function undo() {
+    if (!UNDO) { toast(t('toastUndoOff')); return; }
+    if (drag || !hist.length || st.won || finishing) return;
+    const moves = st.moves;
+    Object.assign(st, JSON.parse(hist.pop()));
+    st.moves = moves + 1;
+    after({ vol: MOVE_VOL });
+  }
+  // När bara kolumnerna är kvar läggs korten upp av sig själva, så långt det går
+  function autoFinish() {
+    if (finishing) return;
+    finishing = true;
+    const game = st;
+    const step = () => {
+      if (st !== game) return;   // ett nytt spel har startat
+      if (ui.paused()) { setTimeout(step, 300); return; }
+      const col = st.tab.find(x => x.length && toFound(last(x)));
+      if (!col) { finishing = false; after({ vol: MOVE_VOL }); return; }
+      const id = col.pop();
+      st.found[suit(id)].push(id); st.score += 10; st.moves++;
+      render({ vol: MOVE_VOL }); save();
+      if (homed() === 52) { finishing = false; win(); } else setTimeout(step, 110 * Math.max(SPEED, .3));
+    };
+    setTimeout(step, 300);
+  }
+  function win() {
+    st.won = true; save(); updateHud();
+    recordWin(curLevel(), st);   // topplistan och statistiken
+    setTimeout(() => { $('win-text').textContent = t('winStats', { score: st.score, moves: st.moves, time: fmt(st.time) }); open('win'); }, 900);
+  }
+  // Tryck på ett kort: det går helst till sin grundhög, annars till en kolumn med kort i, och sist till en tom kolumn
+  function best(w) {
+    if (w.ids.length === 1 && toFound(w.ids[0])) return 'found';
+    const cols = [0, 1, 2, 3].filter(d => canTab(w, d));
+    const full = cols.find(d => st.tab[d].length);
+    return full !== undefined ? full : cols.length ? cols[0] : null;
+  }
+
+  // ---------- Tips ----------
+  function hint() {
+    if (!HINTS) { toast(t('toastHintsOff')); return; }
+    if (!st || st.won) return;
+    const moves = findMoves();
+    if (!moves.length) {
+      if (st.stock.length || st.waste.length) { table.pulse('b-draw'); toast(t(st.stock.length ? 'toastNoMoveDraw' : 'toastNoPairsTurn')); }
+      else toast(t('toastNoMoves'));
+      return;
+    }
+    const m = moves[hintIdx++ % moves.length];
+    const target = m.to === 'found' ? $('f' + suit(m.ids[0])) : st.tab[m.to].length ? table.el(last(st.tab[m.to])) : $('t' + m.to);
+    table.showHint([...m.ids.map(table.el), target]);
+  }
+
+  // ---------- Layout & rendering ----------
+  // Liggande: stor reserv till vänster, grundhögar och kolumner i mitten, draghög och kasthög till höger.
+  // Stående: grundhögar och kolumner uppifrån, och reserv, kasthög och draghög längst ned nära dockan.
+  const STEP = .26, MOVE_VOL = .4, SUITS = ['♠', '♥', '♦', '♣'], NAMES = { 1: 'A', 11: 'J', 12: 'Q', 13: 'K' };
+  function layout() {
+    const { W, H, T, B } = table.area(), land = W > H, m = Math.max(8, W * .02);
+    const g = land ? .2 : .22;
+    const cw = land ? Math.min((W - 2 * m) / (6.4 + 7 * g), (B - T) / (1.4 * 3.6), 150) : Math.min((W - 2 * m) / (4 + 3 * g), (B - T - 60) / (1.4 * 4.6), 150);
+    const ch = cw * 1.4, gap = cw * g, colsW = 4 * cw + 3 * gap, x0 = (W - colsW) / 2;
+    const xs = [0, 1, 2, 3].map(c => x0 + c * (cw + gap)), fy = T + 8, ty = fy + ch + Math.max(14, cw * .18);
+    let z;
+    if (land) {
+      const rw = cw * 1.2, sx = x0 + colsW + 2 * gap;
+      z = { rw, rx: x0 - 2 * gap - rw, ry: T + (B - T - rw * 1.4) / 2 - 14, sx, sy: fy, wx: sx, wy: fy + ch + 28, fanX: 0, fanY: ch * .2, bottom: B };
+    } else {
+      const by = B - ch - 24;
+      z = { rw: cw, rx: xs[0], ry: by, sx: xs[3], sy: by, wx: xs[2], wy: by, fanX: -cw * .3, fanY: 0, bottom: by - 10 };
+    }
+    M = { W, H, cw, ch, xs, fy, ty, ...z };
+    table.size(board, cw);
+    table.size($('reserve-slot'), M.rw);
+    table.put($('reserve-slot'), M.rx, M.ry); table.put($('stock-slot'), M.sx, M.sy); table.put($('waste-slot'), M.wx, M.wy);
+    for (let i = 0; i < 4; i++) { table.put($('f' + i), xs[i], fy); table.put($('t' + i), xs[i], ty); }
+    table.put($('stock-n'), M.sx + cw - 16, M.sy - 10);
+    table.put($('reserve-n'), M.rx + M.rw - 16, M.ry - 10);
+    const label = (id, x, w, y) => { table.put($(id), x - 20, y); $(id).style.width = w + 40 + 'px'; };
+    label('reserve-lbl', M.rx, M.rw, M.ry + M.rw * 1.4 + 6);
+    label('stock-lbl', M.sx, cw, M.sy + ch + 6);
+    label('waste-lbl', M.wx, cw, M.wy + ch + 2 * M.fanY + 6);
+  }
+  // Avståndet i en kolumn. Får inte alla kort plats trycks de ihop.
+  function stepOf(col) {
+    const need = (col.length - 1) * STEP * M.ch, room = M.bottom - M.ty - M.ch;
+    return need > room && need > 0 ? STEP * M.ch * Math.max(0, room) / need : STEP * M.ch;
+  }
+  function render(anim = {}) {
+    table.anim(anim);
+    st.stock.forEach((id, j) => table.set(id, M.sx, M.sy, 10 + j, 'card', M.cw));
+    // Kasthögen: vid dra 3 syns de tre översta korten
+    const fan = st.draw === 3 ? 3 : 1, n = st.waste.length;
+    st.waste.forEach((id, j) => {
+      const k = Math.max(0, j - (n - fan));
+      // Stående ligger det översta kortet på kasthögens plats och de andra åt vänster
+      const off = M.fanX ? (Math.min(fan, n) - 1 - k) : k;
+      table.set(id, M.wx + off * M.fanX, M.wy + off * M.fanY, 100 + j, 'card up', M.cw);
+    });
+    st.reserve.forEach((id, j) => table.set(id, M.rx, M.ry, 100 + j, j === st.reserve.length - 1 ? 'card up' : 'card', M.rw));
+    st.found.forEach((f, s) => f.forEach((id, j) => table.set(id, M.xs[s], M.fy, 100 + j, 'card up', M.cw)));
+    st.tab.forEach((col, c) => {
+      const step = stepOf(col);
+      col.forEach((id, k) => table.set(id, M.xs[c], M.ty + k * step, 200 + k, 'card up', M.cw));
+    });
+    updateHud();
+  }
+  function updateHud() {
+    $('score').textContent = st.score;
+    $('moves').textContent = st.moves;
+    $('time').textContent = fmt(st.time);
+    $('left').textContent = st.reserve.length;
+    const c = homed();
+    $('cleared').textContent = c + '/52';
+    $('ring').style.setProperty('--p', c / 52 * 100);
+    SUITS.forEach((s, i) => $('f' + i).textContent = (NAMES[st.base] || st.base) + s + '︎');
+    const turn = !st.stock.length && st.waste.length > 0;
+    $('stock-n').textContent = st.stock.length;
+    $('stock-n').style.display = st.stock.length ? '' : 'none';
+    $('reserve-n').textContent = st.reserve.length;
+    $('reserve-n').style.display = st.reserve.length ? '' : 'none';
+    $('reserve-slot').classList.toggle('live', st.reserve.length > 0);
+    $('stock-slot').textContent = turn ? '↻' : '';
+    $('stock-slot').classList.toggle('empty', !st.stock.length && !turn);
+    $('draw-lbl').textContent = st.stock.length ? t('draw', st.stock.length) : t('turn');
+    $('b-draw').disabled = st.won || (!st.stock.length && !turn);
+    $('b-undo').disabled = UNDO > 0 && (!hist.length || st.won);
+  }
+
+  // ---------- Touch / mus ----------
+  // Var släpps korten? En grundhög om kortet ligger över sin hög, annars kolumnen under kortets mitt.
+  function dropAt(g) {
+    const r = g.el.getBoundingClientRect(), br = board.getBoundingClientRect();
+    const cx = r.left - br.left + r.width / 2, cy = r.top - br.top + r.height / 2, id = g.w.ids[0];
+    if (g.w.ids.length === 1 && toFound(id) && Math.abs(cx - (M.xs[suit(id)] + M.cw / 2)) < M.cw * .9 && Math.abs(cy - (M.fy + M.ch / 2)) < M.ch * .75) return 'found';
+    let hit = null, dist = Infinity;
+    for (let c = 0; c < 4; c++) {
+      const d = Math.abs(cx - (M.xs[c] + M.cw / 2));
+      if (d < dist && d < M.cw * .9 && cy > M.ty - M.ch * .5 && canTab(g.w, c)) { dist = d; hit = c; }
+    }
+    return hit;
+  }
+  board.addEventListener('pointerdown', e => {
+    if (drag || !st || st.won || finishing) return;
+    if (relayout()) return;   // skärmen har vridits utan att vi märkt det: rätta layouten först
+    const el = e.target.closest('.card');
+    if (e.target.closest('#stock-slot') || (el && st.stock.includes(+el.dataset.id))) { draw(); return; }
+    if (!el) return;
+    const w = where(+el.dataset.id);
+    if (!w) { shake([el]); return; }
+    drag = { w, el, els: w.ids.map(table.el), pid: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, moving: false };
+  });
+  window.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.pid) return;
+    drag.dx = e.clientX - drag.x0; drag.dy = e.clientY - drag.y0;
+    if (!drag.moving && Math.hypot(drag.dx, drag.dy) < 8) return;
+    if (!drag.moving) { drag.moving = true; drag.els.forEach((x, i) => { x.classList.add('dragging'); x.style.zIndex = 5000 + i; }); table.clearHints(); }
+    drag.els.forEach(x => x.style.translate = `${x._x + drag.dx}px ${x._y + drag.dy}px`);
+    table.clearTargets();
+    const to = dropAt(drag);
+    if (to === 'found') $('f' + suit(drag.w.ids[0])).classList.add('target');
+    else if (to !== null) (st.tab[to].length ? table.el(last(st.tab[to])) : $('t' + to)).classList.add('target');
+  });
+  function endDrag(e, cancel) {
+    if (!drag || e.pointerId !== drag.pid) return;
+    const g = drag; drag = null; table.clearTargets();
+    if (g.moving) {
+      const to = cancel ? null : dropAt(g);
+      // Flytta in fingrets förskjutning i kortets plats innan animationen, så att den startar där kortet släpptes
+      g.els.forEach(x => place(x, x._x + g.dx, x._y + g.dy));
+      void board.offsetWidth;
+      if (to !== null) move(g.w, to); else render({ vol: MOVE_VOL });
+    } else if (!cancel) {
+      const to = best(g.w);
+      if (to !== null) move(g.w, to); else shake(g.els);
+    }
+    setTimeout(relayout, 400);   // om skärmen vreds under draget
+  }
+  window.addEventListener('pointerup', e => endDrag(e, false));
+  window.addEventListener('pointercancel', e => endDrag(e, true));
+
+  // ---------- Knappar & dialoger ----------
+  document.querySelectorAll('#lobby [data-key=draw] .btn').forEach(b => b.textContent = t('drawCards', +b.dataset.v));
+  const ui = flow({ game: () => st, newGame, undo, hint, draw, stuck, untouched, save, settings, SKEY, parse: v => +v, curLevel, wantLevel, changeSub: 'cfChangeSub' });
+  const { open, showLobby, showLost } = ui;
+
+  function relayout() {
+    if (drag || !M || (M.W === board.clientWidth && M.H === board.clientHeight)) return false;
+    layout(); if (st) instant(() => render());
+    return true;
+  }
+  Game.watch({ board, game: () => st, paused: () => ui.paused(), save, relayout });
+
+  // ---------- Start ----------
+  layout();
+  const saved = store.get('canfield.game');
+  if (saved && saved.st && saved.st.deck && saved.st.reserve && !saved.st.won) {
+    st = saved.st; hist = UNDO ? (saved.hist || []).slice(-UNDO) : [];
+    table.build(st.deck);
+    instant(() => render());
+    if (canFinish()) autoFinish();
+  }
+  showLobby();
+})();
+</script>
+</body>
+</html>

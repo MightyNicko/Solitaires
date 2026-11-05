@@ -119,6 +119,26 @@
       cw = Math.min(w / 5.6, h / 4); const gap = (w - 4 * cw) / 5, y0 = (h - 3.4 * cw) / 2;
       o += card(gap, y0, null) + card(w - gap - cw, y0, rc());
       for (let c = 0; c < 3; c++) for (let k = 0; k < 2 + (c & 1); k++) o += card(gap + c * (cw + gap), y0 + cw * 1.6 + k * cw * .36, rc(), k);
+    } else if (id === 'canfield') {
+      // Canfield: stor reserv till vänster, grundhögar och fyra kolumner i mitten
+      cw = Math.min(w / 7.6, h / 4.4); const gap = cw * .2, x0 = (w - 4 * cw - 3 * gap) / 2, y0 = (h - 3.8 * cw) / 2;
+      o += card(gap * 1.5, y0 + cw, rc()) + card(w - gap * 1.5 - cw, y0, null) + card(w - gap * 1.5 - cw, y0 + cw * 1.6, rc());
+      for (let c = 0; c < 4; c++) {
+        o += c === 3 ? slot(x0 + c * (cw + gap), y0) : card(x0 + c * (cw + gap), y0, rc());
+        for (let k = 0; k <= (c + 1) % 3; k++) o += card(x0 + c * (cw + gap), y0 + cw * 1.6 + k * cw * .36, rc(), k);
+      }
+    } else if (id === 'calculation') {
+      // Calculation: fyra grundhögar och en kasthög under varje
+      cw = Math.min(w / 5.6, h / 4.6); const gap = (w - 4 * cw) / 5, y0 = (h - 4 * cw) / 2;
+      for (let c = 0; c < 4; c++) {
+        o += card(gap + c * (cw + gap), y0, rc());
+        for (let k = 0; k < [2, 1, 3, 2][c]; k++) o += card(gap + c * (cw + gap), y0 + cw * 1.65 + k * cw * .36, rc(), k);
+      }
+    } else if (id === 'montecarlo') {
+      // Monte Carlo: rutnät med fem gånger fem kort
+      cw = Math.min(w / 5.6, h / 7.4); const g = cw * .1, x0 = (w - 5 * cw - 4 * g) / 2, y0 = (h - 7 * cw - 4 * g) / 2;
+      for (let i = 0; i < 25; i++) { const x = x0 + (i % 5) * (cw + g), y = y0 + Math.floor(i / 5) * (cw * 1.4 + g);
+        o += i > 21 ? slot(x, y) : card(x, y, rc()); }
     } else if (id === 'yukon') {
       // Yukon: sju kolumner med baksidor och många uppvända kort, grundhögarna överst i mitten
       cw = Math.min(w / 8.2, h / 4.6); const gap = (w - 7 * cw) / 8, y0 = (h - 4.4 * cw) / 2;

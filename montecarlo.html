@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Solitaires">
+<meta name="theme-color" content="#10152e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<title>Monte Carlo Solitaire</title>
+<link rel="stylesheet" href="cards.css">
+<link rel="stylesheet" href="base.css">
+<link rel="stylesheet" href="game.css">
+<style>
+  /* Långt spelnamn: poängraden får inte nå ringen när skärmen står */
+  @media (max-width:900px) { .hud { gap:14px; padding-left:20px; padding-right:20px; } .hud > * { gap:14px; } }
+</style>
+<script src="i18n.js"></script>
+<script src="cards.js"></script>
+<script src="sounds.js"></script>
+<script src="games.js"></script>
+<script src="base.js"></script>
+<script src="game.js"></script>
+</head>
+<body>
+<div class="remove-blur" aria-hidden="true"></div>
+<div id="board">
+  <div class="ring" id="ring"><span id="cleared">0/52</span></div>
+  <div class="hud"><div class="l"><span><em data-i18n="mcPairs">Pairs</em><b id="score">0</b></span><span><em data-i18n="moves">Moves</em><b id="moves">0</b></span></div><div class="ttl"><span data-i18n="montecarlo">Monte Carlo</span></div><div class="r"><span><em data-i18n="time">Time</em><b id="time">0:00</b></span><span><em data-i18n="left">Left</em><b id="left">52</b></span></div></div>
+  <div class="slot" id="stock-slot"></div>
+  <div class="slot" id="waste-slot"></div>
+  <div class="badge" id="stock-n"></div>
+  <div class="badge" id="gone-n"></div>
+  <div class="plabel" id="stock-lbl" data-i18n="stock">Draw pile</div>
+  <div class="plabel" id="waste-lbl" data-i18n="waste">Discard pile</div>
+</div>
+
+<div class="overlay lobby" id="lobby"><div class="panel">
+  <div class="medal"><svg viewBox="0 0 48 48" aria-hidden="true"></svg></div>
+  <h2 data-i18n="montecarlo">Monte Carlo</h2>
+  <div class="orn">◆ Solitaire ◆</div>
+  <p class="rules" data-i18n="mcRules"></p>
+  <div class="statgrid"><div><b id="st-played">0</b><span data-i18n="played">Played</span></div><div><b id="st-won">0</b><span data-i18n="won">Won</span></div><div><b id="st-best">–</b><span data-i18n="bestScore">Best score</span></div></div>
+  <button class="btn gold" id="l-resume"></button>
+  <button class="btn gold" id="l-play"></button>
+  <button class="btn link" id="l-home" data-i18n="allGames">‹ All games</button>
+</div></div>
+
+<script>
+(() => {
+  const t = I18N.t;
+  I18N.apply();
+  const $ = id => document.getElementById(id);
+  const board = $('board');
+  const { store, UNDO, HINTS, fmt, place, instant, toast, shake, record, recordWin, begin, flow, table } = Game.init(board, 'montecarlo', { mid: 'collect', win: 'mcWin', lost: 'mcLost', sized: true });
+
+  let st = null, hist = [], M = null, drag = null, sel = -1, hintIdx = 0;
+  const save = () => st && store.set('montecarlo.game', { st, hist });
+  const settings = {};
+  const SKEY = 'montecarlo.settings';
+
+  // Rutorna i brädet
+  for (let i = 0; i < 25; i++) board.insertAdjacentHTML('beforeend', `<div class="slot" id="g${i}"></div>`);
+
+  // ---------- Regler ----------
+  // Ett bräde med 5 × 5 rutor (grid: kortets nummer, eller null för en lucka). Två kort med samma valör som ligger intill varandra,
+  // även på diagonalen, tas bort. Samla ihop stänger luckorna och fyller på från draghögen. Alla 52 kort borta är en vinst.
+  const rank = id => st.deck[id].r;
+  const near = (a, b) => a !== b && Math.abs((a % 5) - (b % 5)) <= 1 && Math.abs(Math.floor(a / 5) - Math.floor(b / 5)) <= 1;
+  const isPair = (a, b) => st.grid[a] !== null && st.grid[b] !== null && near(a, b) && rank(st.grid[a]) === rank(st.grid[b]);
+  const partners = a => [...Array(25).keys()].filter(b => isPair(a, b));
+  function allPairs() {
+    const res = [];
+    for (let a = 0; a < 25; a++) for (let b = a + 1; b < 25; b++) if (isPair(a, b)) res.push([a, b]);
+    return res;
+  }
+  // Ändrar Samla ihop något? Ja, om ett kort ligger efter en lucka eller om draghögen kan fylla på.
+  function canCollect() {
+    const firstGap = st.grid.indexOf(null);
+    return firstGap >= 0 && (st.stock.length > 0 || st.grid.slice(firstGap).some(x => x !== null));
+  }
+  const stuck = () => !st.won && st.gone.length < 52 && !allPairs().length && !canCollect();
+
+  // ---------- Spelflöde ----------
+  const curLevel = () => 'classic', wantLevel = () => 'classic';
+  const untouched = () => st && !st.won && !st.moves;
+  function newGame() {
+    if (st && !st.won && st.moves > 0) record(curLevel(), st, false);   // ett ej klarat spel hamnar också på topplistan
+    const { deck, ids } = table.shuffled();
+    const grid = ids.splice(-25);
+    st = { deck, grid, stock: ids, gone: [], score: 0, moves: 0, time: 0, won: false, counted: false, id: Date.now() };
+    hist = []; sel = -1; hintIdx = 0; table.clearHints(); table.build(deck);
+    instant(() => deck.forEach((_, id) => { table.el(id).className = 'card'; table.set(id, M.sx, M.sy, 10, 'card', M.sc); }));
+    const delay = {};
+    grid.forEach((id, i) => delay[id] = i * 30);
+    render({ delay }); save();
+  }
+  function snapshot() { return JSON.stringify({ grid: st.grid, stock: st.stock, gone: st.gone, score: st.score }); }
+  function pushHist() { if (!UNDO) return; hist.push(snapshot()); if (hist.length > UNDO) hist.shift(); }
+  function after(anim) {
+    begin(curLevel(), st);   // första draget: spelet räknas som spelat
+    sel = -1; hintIdx = 0; table.clearHints(); render(anim); save();
+    if (st.gone.length === 52 && !st.won) win();
+    else if (stuck()) setTimeout(() => {
+      if (!st || st.won || !stuck()) return;
+      record(curLevel(), st, false);   // det förlorade spelet läggs på topplistan direkt
+      showLost();
+    }, 700);
+  }
+  function takePair(a, b) {
+    pushHist();
+    st.gone.push(st.grid[a], st.grid[b]);
+    st.grid[a] = st.grid[b] = null;
+    st.score = st.gone.length / 2; st.moves++;
+    after({ vol: MOVE_VOL });
+  }
+  // Korten flyttas framåt så att luckorna försvinner, och nya kort från draghögen fyller på
+  function collect() {
+    if (drag || !st || st.won || !canCollect()) return;
+    pushHist();
+    const rest = st.grid.filter(x => x !== null), delay = {};
+    let n = 0;
+    while (rest.length < 25 && st.stock.length) { const id = st.stock.pop(); rest.push(id); delay[id] = 120 + n++ * 50; }
+    while (rest.length < 25) rest.push(null);
+    st.grid = rest; st.moves++;
+    after({ delay, vol: .6 });
+  }
+  function undo() {
+    if (!UNDO) { toast(t('toastUndoOff')); return; }
+    if (drag || !hist.length || st.won) return;
+    const moves = st.moves;
+    Object.assign(st, JSON.parse(hist.pop()));
+    st.moves = moves + 1;
+    after({ vol: MOVE_VOL });
+  }
+  function win() {
+    st.won = true; save(); updateHud();
+    recordWin(curLevel(), st);   // topplistan och statistiken
+    setTimeout(() => { $('win-text').textContent = t('winStats', { score: st.score, moves: st.moves, time: fmt(st.time) }); open('win'); }, 900);
+  }
+
+  // ---------- Tips ----------
+  function hint() {
+    if (!HINTS) { toast(t('toastHintsOff')); return; }
+    if (!st || st.won) return;
+    const list = allPairs();
+    if (list.length) { const [a, b] = list[hintIdx++ % list.length]; table.showHint([table.el(st.grid[a]), table.el(st.grid[b])]); }
+    else if (canCollect()) { table.pulse('b-collect'); toast(t('mcNoPairs')); }
+    else toast(t('toastNoMoves'));
+  }
+
+  // ---------- Layout & rendering ----------
+  // Liggande: draghögen till vänster och kasthögen till höger om brädet. Stående: båda ovanför brädet.
+  const MOVE_VOL = .4;
+  function layout() {
+    const { W, H, T, B } = table.area(), land = W > H, m = Math.max(8, W * .02), g = Math.max(4, Math.min(W, H) * .012), LBL = 28;
+    const cw = land ? Math.min((B - T - 4 * g) / 7, (W - 2 * m - 4 * g) / 8, 165)
+                    : Math.min((B - T - 4 * g - LBL - 6) / 7.98, (W - 2 * m - 4 * g) / 5, 165);
+    const ch = cw * 1.4, gw = 5 * cw + 4 * g, gh = 5 * ch + 4 * g, sc = land ? cw * 1.25 : cw * .7, sh = sc * 1.4;
+    const x0 = (W - gw) / 2;
+    let z;
+    if (land) {
+      const sy = T + (B - T - sh) / 2 - 14, sx = Math.max(m, (x0 - sc) / 2);
+      z = { y0: T + (B - T - gh) / 2, sx, sy, wx: W - sx - sc, wy: sy };
+    } else {
+      const free = B - T - sh - LBL - gh;
+      z = { y0: T + sh + LBL + Math.max(0, free) * .6, sx: x0, sy: T + Math.max(0, free) * .3, wx: x0 + gw - sc, wy: T + Math.max(0, free) * .3 };
+    }
+    M = { W, H, cw, ch, g, x0, sc, ...z };
+    table.size(board, cw);
+    [$('stock-slot'), $('waste-slot')].forEach(e => table.size(e, sc));
+    table.put($('stock-slot'), M.sx, M.sy); table.put($('waste-slot'), M.wx, M.wy);
+    table.put($('stock-n'), M.sx + sc - 16, M.sy - 10); table.put($('gone-n'), M.wx + sc - 16, M.wy - 10);
+    const label = (id, x, y) => { table.put($(id), x - 20, y); $(id).style.width = sc + 40 + 'px'; };
+    label('stock-lbl', M.sx, M.sy + sh + 6); label('waste-lbl', M.wx, M.wy + sh + 6);
+    for (let i = 0; i < 25; i++) table.put($('g' + i), cellX(i), cellY(i));
+  }
+  const cellX = i => M.x0 + (i % 5) * (M.cw + M.g), cellY = i => M.y0 + Math.floor(i / 5) * (M.ch + M.g);
+  function render(anim = {}) {
+    table.anim(anim);
+    st.stock.forEach((id, j) => table.set(id, M.sx, M.sy, 10 + j, 'card', M.sc));
+    st.gone.forEach((id, j) => table.set(id, M.wx, M.wy, 100 + j, 'card up', M.sc));
+    drawGrid();
+    updateHud();
+  }
+  // Det valda kortet lyser, och om tips är på även korten som det kan paras med
+  function drawGrid() {
+    const can = HINTS && sel >= 0 ? partners(sel) : [];
+    st.grid.forEach((id, i) => {
+      if (id !== null) table.set(id, cellX(i), cellY(i), 200 + i, 'card up' + (i === sel ? ' sel' : can.includes(i) ? ' can' : ''), M.cw);
+    });
+  }
+  function updateHud() {
+    $('score').textContent = st.score;
+    $('moves').textContent = st.moves;
+    $('time').textContent = fmt(st.time);
+    $('left').textContent = 52 - st.gone.length;
+    $('cleared').textContent = st.gone.length + '/52';
+    $('ring').style.setProperty('--p', st.gone.length / 52 * 100);
+    $('stock-n').textContent = st.stock.length;
+    $('stock-n').style.display = st.stock.length ? '' : 'none';
+    $('gone-n').textContent = st.gone.length;
+    $('gone-n').style.display = st.gone.length ? '' : 'none';
+    $('collect-lbl').textContent = t('collect');
+    $('b-collect').disabled = st.won || !canCollect();
+    $('b-undo').disabled = UNDO > 0 && (!hist.length || st.won);
+  }
+
+  // ---------- Touch / mus ----------
+  // Tryck på ett kort och sedan på ett kort med samma valör intill, eller dra det ena till det andra
+  const cellOf = id => st.grid.indexOf(id);
+  function overPartner(e, from) {
+    for (const n of document.elementsFromPoint(e.clientX, e.clientY)) {
+      const c = n.closest && n.closest('.card');
+      if (!c) continue;
+      const i = cellOf(+c.dataset.id);
+      if (i >= 0 && isPair(from, i)) return i;
+    }
+    return -1;
+  }
+  board.addEventListener('pointerdown', e => {
+    if (drag || !st || st.won) return;
+    if (relayout()) return;   // skärmen har vridits utan att vi märkt det: rätta layouten först
+    const el = e.target.closest('.card');
+    if (!el) { if (sel >= 0) { sel = -1; drawGrid(); } return; }
+    const i = cellOf(+el.dataset.id);
+    if (i < 0) return;
+    drag = { i, el, pid: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, dy: 0, moving: false };
+  });
+  window.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.pid) return;
+    drag.dx = e.clientX - drag.x0; drag.dy = e.clientY - drag.y0;
+    if (!drag.moving && Math.hypot(drag.dx, drag.dy) < 8) return;
+    if (!drag.moving) { drag.moving = true; drag.el.classList.add('dragging'); drag.el.style.zIndex = 5000; table.clearHints(); }
+    drag.el.style.translate = `${drag.el._x + drag.dx}px ${drag.el._y + drag.dy}px`;
+    table.clearTargets();
+    const to = overPartner(e, drag.i);
+    if (to >= 0) table.el(st.grid[to]).classList.add('target');
+  });
+  function tap(g) {
+    if (sel === g.i) { sel = -1; drawGrid(); return; }
+    if (sel >= 0 && isPair(sel, g.i)) { takePair(sel, g.i); return; }
+    if (!partners(g.i).length) { sel = -1; drawGrid(); shake([g.el]); return; }
+    sel = g.i; table.clearHints(); drawGrid();
+  }
+  function endDrag(e, cancel) {
+    if (!drag || e.pointerId !== drag.pid) return;
+    const g = drag; drag = null; table.clearTargets();
+    if (g.moving) {
+      const to = cancel ? -1 : overPartner(e, g.i);
+      // Flytta in fingrets förskjutning i kortets plats innan animationen, så att den startar där kortet släpptes
+      place(g.el, g.el._x + g.dx, g.el._y + g.dy);
+      void board.offsetWidth;
+      if (to >= 0) takePair(g.i, to); else render({ vol: MOVE_VOL });
+    } else if (!cancel) tap(g);
+    setTimeout(relayout, 400);   // om skärmen vreds under draget
+  }
+  window.addEventListener('pointerup', e => endDrag(e, false));
+  window.addEventListener('pointercancel', e => endDrag(e, true));
+
+  // ---------- Knappar & dialoger ----------
+  const ui = flow({ game: () => st, newGame, undo, hint, draw: collect, stuck, untouched, save, settings, SKEY, curLevel, wantLevel, changeSub: 'idChangeSub' });
+  const { open, showLost } = ui;
+
+  function relayout() {
+    if (drag || !M || (M.W === board.clientWidth && M.H === board.clientHeight)) return false;
+    layout(); if (st) instant(() => render());
+    return true;
+  }
+  Game.watch({ board, game: () => st, paused: () => ui.paused(), save, relayout });
+
+  // ---------- Start ----------
+  layout();
+  const saved = store.get('montecarlo.game');
+  if (saved && saved.st && saved.st.deck && saved.st.grid && !saved.st.won) {
+    st = saved.st; hist = UNDO ? (saved.hist || []).slice(-UNDO) : [];
+    table.build(st.deck);
+    instant(() => render());
+  }
+  ui.showLobby();
+})();
+</script>
+</body>
+</html>
