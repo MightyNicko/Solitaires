@@ -210,7 +210,7 @@ const RULES = (() => {
           d: [c(S, 9, 100, 0), c(D, 6, 172, 0), slot(244, 0), ...dealTo(0, [[H, 8, 100, FAN], [S, 3, 172, FAN], [D, Q, 244, 0]])] },
       ],
       end: L('Spelet tar slut när draghögen är tom och inget kort går att kasta, inte heller efter flyttar till tomma högar. Är bara essen kvar har du vunnit. Poängen är antalet kastade kort, och även förlorade spel kommer på topplistan.', 'The game ends when the draw pile is empty and no card can be discarded, even after moves to empty piles. If only the aces are left, you have won. The score is the number of discarded cards, and lost games also reach the top list.'),
-      tips: L('Spara tomma högar till höga kort. Flytta gärna ett ess eller en kung, sällan en tvåa. Kortkoll visar vilka kort som återstår.', 'Save empty piles for high cards. Move an ace or a king rather than a two. The card tracker shows which cards remain.'),
+      tips: L('Spara tomma högar till höga kort. Flytta gärna ett ess eller en kung, sällan en tvåa.', 'Save empty piles for high cards. Move an ace or a king rather than a two.'),
     }),
   };
 })();

@@ -18,20 +18,6 @@
   /* Draghögen och kasthögen är mindre än högarna, så korten ändrar storlek när de flyttas dit */
   .card { transition:translate var(--dur,.3s) cubic-bezier(.2,.8,.2,1), transform var(--dur,.3s) cubic-bezier(.2,.8,.2,1), opacity var(--dur,.3s), width var(--dur,.3s), height var(--dur,.3s); }
   .slot.free { display:grid; place-items:center; border:2px dashed rgba(245,213,138,.6); background:rgba(245,213,138,.05); color:var(--gold); font-size:max(calc(var(--cw) * .1),10px); letter-spacing:.06em; text-align:center; }
-  /* Kortkoll: visar vilka kort som är kastade, ligger på bordet eller inte har kommit än */
-  #tally { position:absolute; padding:10px 12px; border-radius:16px; background:rgba(20,26,53,.9); border:1px solid rgba(245,213,138,.4); z-index:1500; pointer-events:none; }
-  #tally h4 { margin:0 0 6px; font:400 13px Georgia,serif; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); }
-  .tgrid { display:grid; gap:3px; align-items:center; }
-  .tgrid.up { grid-template-columns:repeat(4,1fr); }
-  .tgrid.wide { grid-template-columns:20px repeat(13,1fr); }
-  .tgrid u { text-decoration:none; font-size:15px; line-height:1.3; text-align:center; color:var(--ink); }
-  .tgrid u.red { color:#ff7d8c; }
-  .tgrid i { font-style:normal; text-align:center; font-size:min(calc(var(--lh) * .55),14px); font-weight:700; line-height:var(--lh); border-radius:4px; background:#f7f0dc; color:#121a3f; }
-  .tgrid i.red { color:#c8102e; }
-  .tgrid i.gone { background:transparent; color:rgba(233,223,196,.25); }
-  .tgrid i.tbl { background:transparent; color:var(--gold); box-shadow:inset 0 0 0 1.5px var(--gold); }
-  .tleg { display:flex; flex-wrap:wrap; gap:4px 12px; margin-top:8px; font-size:11px; color:rgba(233,223,196,.75); }
-  .tleg b { font-weight:400; display:inline-block; width:12px; height:12px; border-radius:3px; margin-right:4px; vertical-align:-2px; }
 </style>
 <script src="i18n.js"></script>
 <script src="cards.js"></script>
@@ -55,7 +41,6 @@
   <div class="slot free" id="p1" data-i18n="idEmpty">Empty</div>
   <div class="slot free" id="p2" data-i18n="idEmpty">Empty</div>
   <div class="slot free" id="p3" data-i18n="idEmpty">Empty</div>
-  <div id="tally"></div>
 </div>
 
 <div class="overlay lobby" id="lobby"><div class="panel">
@@ -211,32 +196,6 @@
   function clearHintMarks() { clearTimeout(hintTimer); board.querySelectorAll('.hint').forEach(e => e.classList.remove('hint')); }
   function clearHint() { hintIdx = 0; clearHintMarks(); }
 
-  // ---------- Kortkoll ----------
-  // Står upp längs högerkanten när skärmen ligger och ligger brett under högarna när skärmen står
-  const RANKS = [1, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2], NAMES = { 1: 'A', 13: 'K', 12: 'Q', 11: 'J' };
-  const SYM = ['♠', '♥', '♦', '♣'].map(s => s + '︎');
-  let tallyUp = null, cells = [];
-  function buildTally(up) {
-    tallyUp = up;
-    const red = s => s === 1 || s === 2 ? 'red' : '';
-    const head = s => `<u class="${red(s)}">${SYM[s]}</u>`;
-    const cell = (s, r) => `<i class="${red(s)}" data-id="${s * 13 + r - 1}">${NAMES[r] || r}</i>`;
-    const grid = up ? [0, 1, 2, 3].map(head).join('') + RANKS.map(r => [0, 1, 2, 3].map(s => cell(s, r)).join('')).join('')
-                    : [0, 1, 2, 3].map(s => head(s) + RANKS.map(r => cell(s, r)).join('')).join('');
-    $('tally').innerHTML = `<h4>${t('tallyTitle')}</h4><div class="tgrid ${up ? 'up' : 'wide'}">${grid}</div>` +
-      `<div class="tleg"><span><b style="background:#f7f0dc"></b>${t('tallyNew')}</span><span><b style="box-shadow:inset 0 0 0 1.5px var(--gold)"></b>${t('tallyTable')}</span><span style="opacity:.7">${t('tallyGone')}</span></div>`;
-    cells = [];
-    $('tally').querySelectorAll('i').forEach(e => cells[+e.dataset.id] = e);
-    if (st) updateTally();
-  }
-  function updateTally() {
-    const on = new Set(st.cols.flat()), off = new Set(st.gone);
-    cells.forEach((e, id) => {
-      const red = st.deck[id].s === 1 || st.deck[id].s === 2, cls = off.has(id) ? 'gone' : on.has(id) ? 'tbl' : red ? 'red' : '';
-      if (e.className !== cls) e.className = cls;
-    });
-  }
-
   // ---------- Layout & rendering ----------
   function buildCards() {
     els.forEach(e => e.remove());
@@ -257,30 +216,13 @@
     const hudB = document.querySelector('.hud').getBoundingClientRect().bottom - br.top + 16;
     const T = W <= 640 ? Math.max(hudB, $('ring').getBoundingClientRect().bottom - br.top + 10) : hudB;
     const B = document.querySelector('.dock').getBoundingClientRect().top - br.top - 12;
-    const land = W > H, tally = $('tally');
-    if (tallyUp !== land) buildTally(land);
-    // Kortkoll först, eftersom korten får det utrymme som blir kvar. På en låg skärm (telefon på bredden) får den inte plats.
-    let zone = W, bottom = B;
     const m = Math.max(8, W * .02);
-    if (land) {
-      const pw = Math.min(210, W * .2), lh = Math.min(30, Math.floor((B - T - 136) / 13 - 3));
-      tally.style.display = lh < 14 ? 'none' : '';
-      if (lh >= 14) {
-        tally.style.setProperty('--lh', lh + 'px'); tally.style.width = pw + 'px';
-        put(tally, W - pw - m, T); zone = W - pw - m;
-      }
-    } else {
-      tally.style.display = '';
-      tally.style.setProperty('--lh', (W < 500 ? 20 : 28) + 'px'); tally.style.width = W - 2 * m + 'px';
-      const th = tally.offsetHeight;
-      put(tally, m, B - th); bottom = B - th - 12;
-    }
     // Fyra högar med draghögen och kasthögen i en rad ovanför, i mindre format
     const gapR = .16, LBL = 26, SMALL = .62;
-    const cw = Math.min((zone - 2 * m) / (4 + 3 * gapR), (bottom - T - LBL) / (1.4 * (SMALL + 1 + 5 * STEP)), 165);
-    const ch = cw * 1.4, gap = cw * gapR, colsW = 4 * cw + 3 * gap, x0 = (zone - colsW) / 2, sc = cw * SMALL;
+    const cw = Math.min((W - 2 * m) / (4 + 3 * gapR), (B - T - LBL) / (1.4 * (SMALL + 1 + 5 * STEP)), 165);
+    const ch = cw * 1.4, gap = cw * gapR, colsW = 4 * cw + 3 * gap, x0 = (W - colsW) / 2, sc = cw * SMALL;
     const xs = [0, 1, 2, 3].map(c => x0 + c * (cw + gap)), ty = T + sc * 1.4 + LBL, wx = x0 + colsW - sc;
-    M = { W, H, cw, ch, sc, xs, ty, bottom, sx: x0, sy: T, wx, wy: T };
+    M = { W, H, cw, ch, sc, xs, ty, bottom: B, sx: x0, sy: T, wx, wy: T };
     size(board, cw);
     [$('stock-slot'), $('waste-slot')].forEach(e => size(e, sc));
     put($('stock-slot'), x0, T); put($('waste-slot'), wx, T);
@@ -335,7 +277,6 @@
     $('deal-lbl').textContent = t('deal', st.stock.length / 4);
     $('b-deal').disabled = st.won || !st.stock.length;
     $('b-undo').disabled = UNDO > 0 && (!hist.length || st.won);
-    updateTally();
   }
 
   // ---------- Touch / mus ----------
