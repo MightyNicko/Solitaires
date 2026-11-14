@@ -123,11 +123,13 @@
   .hall { display:grid; grid-template-columns:repeat(4,1fr); gap:16px 8px; }
   /* Får inte alla spel plats skrollar trofésalen (höjden sätts i fitStats), som på sidan Spela: ingen rullningslist,
      en bit av nästa rad syns och nederkanten tonas ut så länge det finns fler */
-  .hall.scroll { overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; align-content:start; padding-top:4px;
+  /* Toningen sitter fast på en ram runt listan och ändras aldrig medan man skrollar: på iPaden kunde listan inte skrollas tillbaka
+     när toningen slogs av och på på själva listan. Luft under sista raden gör att den syns helt när man har skrollat ned. */
+  .hallbox.scroll { -webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 60px),rgba(0,0,0,.15)); mask-image:linear-gradient(180deg,#000 calc(100% - 60px),rgba(0,0,0,.15)); }
+  .hall.scroll { overflow-y:auto; -webkit-overflow-scrolling:touch; align-content:start; padding:4px 0 60px; box-sizing:border-box;
                  scroll-snap-type:y proximity; scrollbar-width:none; }
   .hall.scroll::-webkit-scrollbar { display:none; }
   .hall.scroll .tro { scroll-snap-align:start; scroll-margin-top:4px; }
-  .hall.more { -webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 70px),rgba(0,0,0,.15)); mask-image:linear-gradient(180deg,#000 calc(100% - 70px),rgba(0,0,0,.15)); }
   .tro { all:unset; cursor:pointer; text-align:center; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
   .tro .rg { width:96px; height:96px; margin:0 auto; border-radius:50%; display:grid; place-items:center; transition:box-shadow .2s, transform .12s; }
   .tro:active .rg { transform:scale(.95); }
@@ -242,7 +244,7 @@
     <button class="deco line" id="open-settings"><span data-i18n="settings">Settings</span><small data-i18n="settingsSub">Appearance &amp; data</small></button>
   </div>
 </main>
-<div class="version">v1.5.1114.1511</div>
+<div class="version">v1.5.1114.1622</div>
 </div>
 
 <div class="overlay" id="stats"><div class="panel wide">
@@ -351,12 +353,10 @@
       <table><thead><tr><th>${t('level')}</th><th>${t('played')}</th><th>${t('won')}</th><th class="hide-sm">${t('winRate')}</th><th>${t('best')}</th><th>${t('fastest')}</th></tr></thead>
       <tbody>${rows.map(r => row(r)).join('')}${row(tot, 'total')}</tbody></table><div class="tap">${t('topTap')}</div></section>`;
     const old = $('stats-body').querySelector('.hall'), top = old ? old.scrollTop : 0;
-    $('stats-body').innerHTML = `<div class="hall">${hall}</div>${side}`;
+    $('stats-body').innerHTML = `<div class="hallbox${hallH ? ' scroll' : ''}"><div class="hall">${hall}</div></div>${side}`;
     const h = $('stats-body').querySelector('.hall');
-    if (hallH) { h.classList.add('scroll'); h.style.height = hallH + 'px'; h.scrollTop = top; fadeHall(h); h.onscroll = () => fadeHall(h); }
+    if (hallH) { h.classList.add('scroll'); h.style.height = hallH + 'px'; h.scrollTop = top; }
   }
-  // Tonar ut nederkanten så länge det finns fler spel nedanför
-  const fadeHall = h => h.classList.toggle('more', h.scrollTop + h.clientHeight < h.scrollHeight - 8);
   let hallH = 0;
   // Öppna statistiken: först det mest spelade spelet. Höjden låses till det spel som har flest nivåer (mäts med
   // det spelet visat), så fönstret aldrig ändrar storlek när man byter spel. Räknas om när skärmen vrids.
