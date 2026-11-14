@@ -121,6 +121,13 @@
   }
   /* Trofésalen: varje spel är en medalj med en guldring som fylls efter vinstprocenten. Tryck på en för detaljerna. */
   .hall { display:grid; grid-template-columns:repeat(4,1fr); gap:16px 8px; }
+  /* Får inte alla spel plats skrollar trofésalen (höjden sätts i fitStats), som på sidan Spela: ingen rullningslist,
+     en bit av nästa rad syns och nederkanten tonas ut så länge det finns fler */
+  .hall.scroll { overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; align-content:start; padding-top:4px;
+                 scroll-snap-type:y proximity; scrollbar-width:none; }
+  .hall.scroll::-webkit-scrollbar { display:none; }
+  .hall.scroll .tro { scroll-snap-align:start; scroll-margin-top:4px; }
+  .hall.more { -webkit-mask-image:linear-gradient(180deg,#000 calc(100% - 70px),rgba(0,0,0,.15)); mask-image:linear-gradient(180deg,#000 calc(100% - 70px),rgba(0,0,0,.15)); }
   .tro { all:unset; cursor:pointer; text-align:center; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
   .tro .rg { width:96px; height:96px; margin:0 auto; border-radius:50%; display:grid; place-items:center; transition:box-shadow .2s, transform .12s; }
   .tro:active .rg { transform:scale(.95); }
@@ -235,7 +242,7 @@
     <button class="deco line" id="open-settings"><span data-i18n="settings">Settings</span><small data-i18n="settingsSub">Appearance &amp; data</small></button>
   </div>
 </main>
-<div class="version">v1.5.1105.1853</div>
+<div class="version">v1.5.1114.1511</div>
 </div>
 
 <div class="overlay" id="stats"><div class="panel wide">
@@ -343,16 +350,31 @@
       <div class="summary"><div><b>${tot.played}</b>${t('played')}</div><div><b>${tot.won}</b>${t('won')}</div><div><b>${pct(tot.won, tot.played)}</b>${t('winRate')}</div></div>
       <table><thead><tr><th>${t('level')}</th><th>${t('played')}</th><th>${t('won')}</th><th class="hide-sm">${t('winRate')}</th><th>${t('best')}</th><th>${t('fastest')}</th></tr></thead>
       <tbody>${rows.map(r => row(r)).join('')}${row(tot, 'total')}</tbody></table><div class="tap">${t('topTap')}</div></section>`;
+    const old = $('stats-body').querySelector('.hall'), top = old ? old.scrollTop : 0;
     $('stats-body').innerHTML = `<div class="hall">${hall}</div>${side}`;
+    const h = $('stats-body').querySelector('.hall');
+    if (hallH) { h.classList.add('scroll'); h.style.height = hallH + 'px'; h.scrollTop = top; fadeHall(h); h.onscroll = () => fadeHall(h); }
   }
+  // Tonar ut nederkanten så länge det finns fler spel nedanför
+  const fadeHall = h => h.classList.toggle('more', h.scrollTop + h.clientHeight < h.scrollHeight - 8);
+  let hallH = 0;
   // Öppna statistiken: först det mest spelade spelet. Höjden låses till det spel som har flest nivåer (mäts med
   // det spelet visat), så fönstret aldrig ändrar storlek när man byter spel. Räknas om när skärmen vrids.
   function fitStats() {
     const body = $('stats-body');
     if (!statSel || !GAMES.some(g => g.id === statSel))
       statSel = GAMES.map(g => [g.id, gameStats(g).tot.played]).sort((a, b) => b[1] - a[1])[0][0];
-    body.style.minHeight = '';
+    body.style.minHeight = ''; hallH = 0;
     renderStats(GAMES.slice().sort((a, b) => b.levels.length - a.levels.length)[0].id);
+    // Liggande står trofésalen bredvid detaljerna och blir lika hög som de, och skrollar om alla spel inte får plats.
+    // Får fönstret ändå inte plats på skärmen blir trofésalen lägre, men aldrig lägre än en rad medaljer.
+    const panel = $('stats').querySelector('.panel'), hall = body.querySelector('.hall'), side = body.querySelector('.side');
+    const row = hall.firstElementChild.offsetHeight + 16, twoCols = getComputedStyle(body).display === 'grid';
+    let want = twoCols ? Math.min(hall.offsetHeight, side.offsetHeight) : hall.offsetHeight;
+    want -= Math.max(0, panel.offsetHeight - hall.offsetHeight + want - (window.innerHeight - 32));
+    // Hela rader plus en tredjedel av nästa, så att man ser att det finns fler
+    want = (Math.max(1, Math.floor((want - 4) / row - .35)) + .35) * row + 4;
+    if (want < hall.offsetHeight - 1) { hallH = want; renderStats(GAMES.slice().sort((a, b) => b.levels.length - a.levels.length)[0].id); }
     body.style.minHeight = body.offsetHeight + 'px';
     renderStats();
   }
